@@ -1,0 +1,64 @@
+{
+  "name": "Scaling Champions",
+  "url": "hub.scaling-champions.com",
+  "logoText": "Scaling Champions",
+  "_comment": "Marken-DNA, EINMALIG aus den Beispiel-Anzeigen & -Mails gelernt. Wird nicht pro Webinar geaendert.",
+  "palette": {
+    "bg": "#0C0F14",
+    "bgGradientTo": "#161B22",
+    "surface": "#1B2129",
+    "accent": "#E11D2A",
+    "accentSoft": "#FF3B3B",
+    "text": "#FFFFFF",
+    "textMuted": "#AEB7C2",
+    "line": "#2A323C",
+    "check": "#E11D2A"
+  },
+  "fonts": {
+    "display": "Inter",
+    "body": "Inter"
+  },
+  "voice": {
+    "language": "de",
+    "address": "du",
+    "tone": "direkt, klar, B2B, kein Blabla, selbstbewusst, problem-bewusst. Keine Buzzword-Soße, keine Übertreibung.",
+    "principles": [
+      "Sprich Entscheider in IT-/B2B-Unternehmen an (CEOs, Marketing, Sales).",
+      "Benenne den Pain konkret, bevor du die Lösung zeigst (Problem-Agitate-Solve).",
+      "Nutze konkrete Zahlen/Cases statt Adjektive (z.B. '90% der IT-Unternehmen', 'Jahresziel im Q1 übertroffen', '840k€').",
+      "Trusted Advisor statt Klicki-Bunti. Vertrauen schlägt Lärm.",
+      "Kein Hype, kein 'revolutionär', kein Emoji-Spam. Ein einzelnes Emoji als Akzent ist okay."
+    ]
+  },
+  "adCopyFormat": {
+    "_comment": "Struktur aus den 3 Beispiel-Anzeigen abgeleitet.",
+    "hookPattern": "Live: <zugespitzte Frage oder Behauptung mit Zahl>",
+    "bulletsLabel": "Du erhältst:",
+    "bulletCount": 4,
+    "bulletStyle": "Häkchen-Bullets, je ein konkreter Nutzen/Outcome, kurz.",
+    "ctaOptions": ["Mehr ansehen", "Jetzt kostenlos sichern", "Platz sichern"]
+  },
+  "creative": {
+    "badgeText": "LIVE WEBINAR",
+    "footerCtaText": "Mehr ansehen",
+    "sublineMaxChars": 90,
+    "headlineMaxWords": 7,
+    "_comment": "Visuelle Sprache: dunkler, seriöser Hintergrund; rotes LIVE-WEBINAR-Badge; fette weiße Headline mit EINEM rot akzentuierten Keyword; Speaker-Strip unten mit Name+Rolle; Logo + URL."
+  },
+  "emailFormat": {
+    "_comment": "Aus den 3 Beispiel-Mails (Johannes Rasch) abgeleitet.",
+    "fromName": "Johannes Rasch",
+    "fromRole": "Geschäftsführer Scaling Champions",
+    "greeting": "Hi!",
+    "structure": [
+      "Betreff: zugespitzt, neugierig machend, ohne Clickbait-Lüge",
+      "Preheader: ein Satz, der die Spannung des Betreffs aufnimmt",
+      "Story/Problem-Einstieg: konkrete Beobachtung oder Mini-Case",
+      "Agitation: warum das übliche Vorgehen (mehr Aktivität) nicht funktioniert",
+      "Lösung + Webinar-Pitch: was der Leser im Webinar bekommt (3-4 Bullets)",
+      "Termin + klarer CTA-Button-Text",
+      "Signatur: Johannes Rasch, Geschäftsführer Scaling Champions"
+    ],
+    "ctaText": "Platz sichern"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "_comment": "DER EINZIGE INPUT, DEN MAN TAUSCHT. Für ein neues Webinar nur diese Datei ersetzen -> gleiches System, neuer Output.",
+  "title": "Volle Pipelines trotz IT-Markt-Krise",
+  "subtitle": "Wie du im KI-Zeitalter als Trusted Advisor herausstichst",
+  "format": "Live-Webinar",
+  "date": "08.05.2025",
+  "time": "12:00 Uhr",
+  "registrationUrl": "hub.scaling-champions.com",
+  "audience": "Entscheider im B2B-/IT-Transformationsumfeld — neben CEOs auch Marketing- und Sales-Verantwortliche",
+  "host": {
+    "name": "Johannes Rasch",
+    "role": "CEO Scaling Champions",
+    "photo": "johannes-rasch.png"
+  },
+  "guest": {
+    "name": "Hans Piechatzek",
+    "role": "Geschäftsführer move:elevator",
+    "photo": "hans-piechatzek.png"
+  },
+  "pains": [
+    "Trockene Pipeline, keine eigene Leadgenerierung",
+    "Kaum planbare Kundengewinnung — Forecasts stimmen nicht",
+    "Klicki-Bunti-Marketing ohne Anspruch auf Kundenführung",
+    "Mehr Aktivität (Posts, Kampagnen, Outreach) führt trotzdem zu nichts"
+  ],
+  "coreProblem": "Kein planbares Trusted-Advisor-Kundengewinnungs-System.",
+  "coreMessage": "Es braucht Standards und einen Trusted-Advisor-Ansatz in der Kundengewinnung — über 3 Formate der Kundenreise (intimes Vorgespräch, Transformationssession, Leadmagnet).",
+  "solutionPoints": [
+    "Trusted-Advisor-System für eine planbare Kundengewinnung",
+    "3 Formate der Kundenreise: intimes Vorgespräch, Transformationssession, Leadmagnet",
+    "Marketing & Sales so verzahnen, dass echter Nachfragesog entsteht",
+    "Portfolio so strukturieren, dass man nicht mehr vergleichbar ist"
+  ],
+  "freebie": "Ein Ratgeber-Canvas zum Bau eines Trusted-Advisor-Leadmagneten",
+  "promise": [
+    "Planbare Kundengewinnung",
+    "Kontinuierliche Leadgenerierung ohne Stress",
+    "Ein Sales-Team, das sich zu 100% auf Neukunden fokussiert"
+  ],
+  "proofCases": [
+    "Digitalagentur (>100 Mitarbeitende, move:elevator): Neukundenumsatz-Jahresziel bereits im Q1 übertroffen — im Enterprise-Segment.",
+    "Systemhaus (>60 Mitarbeitende): über Gesamttransformation 840k€ Auftragseingang generiert.",
+    "Entwicklungspartner (>19 Mitarbeitende): nach 3 Monaten mittlerer 6-stelliger Auftragseingang über ein Small Product."
+  ]
+}

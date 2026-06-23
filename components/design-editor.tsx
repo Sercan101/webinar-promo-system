@@ -1,0 +1,97 @@
+"use client";
+
+import { useRef } from "react";
+import { Upload, Check } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { readFileAsDataUri } from "@/lib/file";
+import type { CreativeDesign, CreativeTemplate } from "@/lib/types";
+
+const TEMPLATES: { key: CreativeTemplate; label: string; desc: string }[] = [
+  { key: "bold", label: "Bold", desc: "Kräftig, Glows, gefüllte Buttons" },
+  { key: "minimal", label: "Minimal", desc: "Clean, viel Weißraum, Outline" },
+  { key: "editorial", label: "Editorial", desc: "Magazin-Look, feine Linien" },
+];
+
+const FONTS = [
+  { value: "", label: "Inter — Standard (modern, neutral)" },
+  { value: "Space Grotesk", label: "Space Grotesk (technisch, modern)" },
+  { value: "Playfair Display", label: "Playfair (elegant, Serif)" },
+  { value: "Oswald", label: "Oswald (schmal, plakativ)" },
+];
+
+function UploadRow({ label, hint, value, onChange }: { label: string; hint: string; value?: string; onChange: (v?: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex items-center gap-3">
+        {value
+          /* eslint-disable-next-line @next/next/no-img-element */
+          ? <img src={value} alt="" className="h-10 w-16 rounded object-cover border border-border bg-muted" />
+          : <div className="h-10 w-16 rounded border border-dashed border-border" />}
+        <input ref={ref} type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) onChange(await readFileAsDataUri(f)); }} />
+        <Button type="button" variant="outline" size="sm" onClick={() => ref.current?.click()}><Upload className="h-3.5 w-3.5" /> Hochladen</Button>
+        {value && <Button type="button" variant="ghost" size="sm" onClick={() => onChange(undefined)}>Entfernen</Button>}
+      </div>
+      <p className="text-[11px] text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
+export function DesignEditor({ design, onChange }: { design: CreativeDesign; onChange: (d: CreativeDesign) => void }) {
+  const up = (patch: Partial<CreativeDesign>) => onChange({ ...design, ...patch });
+  return (
+    <div className="space-y-5">
+      {/* Vorlage */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Vorlage</Label>
+        <div className="grid grid-cols-3 gap-2">
+          {TEMPLATES.map((t) => {
+            const active = design.template === t.key;
+            return (
+              <button key={t.key} type="button" onClick={() => up({ template: t.key })}
+                className={`rounded-lg border p-3 text-left transition ${active ? "border-primary bg-primary/10" : "border-border hover:border-muted-foreground/40"}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">{t.label}</span>
+                  {active && <Check className="h-3.5 w-3.5 text-primary" />}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{t.desc}</p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Akzentfarbe */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Akzentfarbe</Label>
+        <div className="flex items-center gap-3">
+          <input type="color" value={design.accent ?? "#E11D2A"} onChange={(e) => up({ accent: e.target.value })} className="h-9 w-12 rounded border border-border bg-transparent cursor-pointer" />
+          <span className="text-xs text-muted-foreground font-mono">{design.accent ?? "Marken-Standard"}</span>
+          {design.accent && <Button type="button" variant="ghost" size="sm" onClick={() => up({ accent: undefined })}>Zurücksetzen</Button>}
+        </div>
+      </div>
+
+      {/* Schrift */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Schrift</Label>
+        <select value={design.font ?? ""} onChange={(e) => up({ font: e.target.value || undefined })}
+          className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm">
+          {FONTS.map((f) => <option key={f.value} value={f.value} className="bg-background">{f.label}</option>)}
+        </select>
+      </div>
+
+      {/* Uploads */}
+      <UploadRow label="Eigenes Logo (optional)" hint="Ersetzt den Schriftzug oben in der Anzeige." value={design.logo} onChange={(v) => up({ logo: v })} />
+      <UploadRow label="Eigener Hintergrund (optional)" hint="Wird abgedunkelt, damit der Text lesbar bleibt — kein 'Text auf Stock-Foto'." value={design.bgImage} onChange={(v) => up({ bgImage: v })} />
+
+      {design.bgImage && (
+        <div className="space-y-1.5">
+          <Label className="text-xs">Hintergrund abdunkeln ({Math.round((design.bgDim ?? 0.62) * 100)}%)</Label>
+          <input type="range" min={0.2} max={0.95} step={0.05} value={design.bgDim ?? 0.62} onChange={(e) => up({ bgDim: Number(e.target.value) })} className="w-full accent-primary" />
+        </div>
+      )}
+    </div>
+  );
+}
