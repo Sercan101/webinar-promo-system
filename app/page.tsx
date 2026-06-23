@@ -17,6 +17,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from "@/components/ui/command";
 import { readFileAsDataUri, compressImage } from "@/lib/file";
 import { Dropzone } from "@/components/dropzone";
+import { ActivityLog, type LogEntry } from "@/components/activity-log";
 import defaultWebinar from "@/inputs/webinar.json";
 import {
   adToMarkdown, anglesToMarkdown, emailToHtml, emailToMarkdown,
@@ -55,6 +56,19 @@ function CopyBtn({ text, label }: { text: string; label: string }) {
   return <Button variant="ghost" size="sm" onClick={() => copyText(text, label)}><Copy className="h-3.5 w-3.5" /></Button>;
 }
 
+// Antwort robust parsen: fängt Nicht-JSON-Fehler (z.B. 413 "Request Entity Too Large") ab.
+async function jsonOrThrow(res: Response) {
+  const text = await res.text();
+  if (!res.ok) {
+    let msg = `Server-Fehler (${res.status})`;
+    try { msg = JSON.parse(text)?.error ?? msg; }
+    catch { msg = res.status === 413 ? "Datei/Anfrage zu groß für den Server — bitte eine kleinere Datei verwenden." : (text.slice(0, 140) || msg); }
+    throw new Error(msg);
+  }
+  try { return text ? JSON.parse(text) : {}; }
+  catch { throw new Error("Ungültige Server-Antwort."); }
+}
+
 export default function Home() {
   const router = useRouter();
   const [webinar, setWebinar] = useState<Webinar>(() => structuredClone(defaultWebinar) as unknown as Webinar);
@@ -84,6 +98,11 @@ export default function Home() {
   const [transcribing, setTranscribing] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { setTheme } = useTheme();
+  const [log, setLog] = useState<LogEntry[]>([]);
+  const logIdRef = useRef(0);
+  const logStep = useCallback((msg: string, kind: LogEntry["kind"] = "info") => {
+    setLog((cur) => [...cur, { id: ++logIdRef.current, time: new Date().toLocaleTimeString("de-DE"), msg, kind }].slice(-40));
+  }, []);
 
   // Nur die Felder, die wirklich im Creative landen — sonst feuert jeder Tastendruck in
   // unbeteiligten Feldern (Pains, Lösung …) einen teuren Render-Call.
@@ -136,7 +155,7 @@ export default function Home() {
     try { if (!localStorage.getItem("promo-tour-seen-v1")) setTimeout(startTour, 700); } catch { /* */ }
   }, []);
 
-  const fail = (e: unknown) => toast.error(e instanceof Error ? e.message : String(e));
+  const fail = (e: unknown) => { const m = e instanceof Error ? e.message : String(e); toast.error(m); logStep(m, "error"); };
 
   function persistHistory(next: HistoryEntry[]) { setHistory(next); try { localStorage.setItem(HISTORY_KEY, JSON.stringify(next)); } catch { /* quota */ } }
   function saveToHistory(bundle: PromoBundle, w: Webinar) {
@@ -163,34 +182,39 @@ export default function Home() {
     }));
     setExampleImages((cur) => [...cur, ...next].slice(0, 6));
     toast.success(`${next.length} Beispiel-Anzeige${next.length > 1 ? "n" : ""} hinzugefügt`);
+    logStep(`${next.length} Beispiel-Anzeige(n) hochgeladen & komprimiert — jetzt „Marke lernen" klicken`, "info");
   }
 
   async function learnBrand() {
     setLearning(true);
+    logStep(exampleImages.length ? `Marke wird aus ${exampleImages.length} eigenen Beispielen gelernt …` : "Marke wird aus den Beispiel-Anzeigen gelernt (Vision) …", "working");
     try {
       const payload = exampleImages.length ? { images: exampleImages.map(({ data, mimeType }) => ({ data, mimeType })) } : {};
       const res = await fetch("/api/learn-brand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Brand-Learning fehlgeschlagen");
+      const data = await jsonOrThrow(res);
       setBrand(data.brand as Brand);
       toast.success(exampleImages.length ? "Marke aus deinen Beispielen gelernt 🎨" : "Marke aus mitgelieferten Beispielen gelernt 🎨");
+      logStep("Marke gelernt — Farben, Ton & Copy-Regeln übernommen ✓", "done");
     } catch (e) { fail(e); } finally { setLearning(false); }
   }
 
   async function extractWebinar(mode: "transkript" | "url") {
     if (!importValue.trim()) return;
     setImporting(true);
+    logStep(mode === "url" ? "Webinar wird von der Landingpage-URL extrahiert …" : "Webinar wird aus dem Transkript extrahiert …", "working");
     try {
       const payload = mode === "url" ? { url: importValue } : { text: importValue };
       const res = await fetch("/api/extract-webinar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Extraktion fehlgeschlagen");
       setWebinar(data.webinar as Webinar); setTab("formular"); toast.success("Webinar extrahiert → ins Formular übernommen 📥");
+      logStep("Webinar übernommen — prüf die Felder im Formular ✓", "done");
     } catch (e) { fail(e); } finally { setImporting(false); }
   }
 
   async function analyzeAngles() {
     setAnalyzingAngles(true);
+    logStep("Angles werden abgeleitet & nach Ziehkraft bewertet …", "working");
     try {
       const res = await fetch("/api/angles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webinar, brand: brand ?? undefined }) });
       const data = await res.json();
@@ -198,6 +222,7 @@ export default function Home() {
       const angles = data.angles as Angle[];
       setAngleLab(angles); setSelectedAngleIds(angles.slice(0, 3).map((a) => a.id));
       toast.success("Angles bewertet — wähle deine Favoriten 🎯");
+      logStep("Angles bewertet — bis zu 3 Favoriten wählen, dann generieren ✓", "done");
     } catch (e) { fail(e); } finally { setAnalyzingAngles(false); }
   }
   function toggleAngle(id: string) {
@@ -212,6 +237,7 @@ export default function Home() {
       return;
     }
     setTranscribing(true);
+    logStep("Aufnahme wird komprimiert & ausgewertet (kann etwas dauern) …", "working");
     try {
       let toSend = file;
       if (isAV) {
@@ -225,14 +251,15 @@ export default function Home() {
       }
       const dataUri = await readFileAsDataUri(toSend);
       const res = await fetch("/api/transcribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUri }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Transkription fehlgeschlagen");
+      const data = await jsonOrThrow(res);
       setWebinar(data.webinar as Webinar); setTab("formular"); toast.success("Aus Aufnahme extrahiert → Formular gefüllt 🎙️");
+      logStep("Webinar aus Aufnahme übernommen ✓", "done");
     } catch (e) { fail(e); } finally { setTranscribing(false); }
   }
 
   async function extractFromPdf(file: File) {
     setImporting(true);
+    logStep("PDF wird gelesen & Felder extrahiert (Text oder per Vision) …", "working");
     try {
       const { extractPdfText, renderPdfToImages } = await import("@/lib/pdf");
       let payload: Record<string, unknown>;
@@ -246,32 +273,35 @@ export default function Home() {
         payload = { images };
       }
       const res = await fetch("/api/extract-webinar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Extraktion fehlgeschlagen");
+      const data = await jsonOrThrow(res);
       setWebinar(data.webinar as Webinar); setTab("formular"); toast.success("Aus PDF extrahiert → Formular gefüllt 📄");
+      logStep("Webinar aus PDF übernommen — prüf kurz die Felder im Formular ✓", "done");
     } catch (e) { fail(e); } finally { setImporting(false); }
   }
 
   async function generate() {
     setResult(null); setPlan(null); setLoading(true);
+    logStep("Assets werden generiert: Angles → 3 Anzeigen × 3 Formate → E-Mail → Qualitäts-Check …", "working");
     try {
       const chosen = angleLab ? angleLab.filter((a) => selectedAngleIds.includes(a.id)) : undefined;
       const res = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webinar, brand: brand ?? undefined, design, angles: chosen && chosen.length >= 2 ? chosen : undefined }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Unbekannter Fehler");
       setResult(data as ApiResult); setCurrentWebinar(webinar); saveToHistory((data as ApiResult).bundle, webinar);
-      toast.success("Assets generiert ✓");
+      toast.success("Assets generiert ✓"); logStep("Assets generiert — Angles, Anzeigen, E-Mail & Qualitäts-Check fertig ✓", "done");
     } catch (e) { fail(e); } finally { setLoading(false); }
   }
 
   async function createPlan() {
     if (!result || !currentWebinar) return;
     setPlanning(true);
+    logStep("Posting-Plan wird geplant (rückwärts vom Webinar-Termin) …", "working");
     try {
       const res = await fetch("/api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webinar: currentWebinar, bundle: result.bundle, brand: brand ?? undefined }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Plan fehlgeschlagen");
       setPlan(data.plan as PostingPlan); toast.success("Posting-Plan erstellt 🗓️");
+      logStep("Posting-Plan fertig — als .ics/.csv exportierbar ✓", "done");
     } catch (e) { fail(e); } finally { setPlanning(false); }
   }
 
@@ -297,6 +327,7 @@ export default function Home() {
 
   async function downloadZip() {
     if (!result) return;
+    logStep("Zyklus-ZIP wird gepackt (Angles, Anzeigen, Creatives, E-Mail, Plan) …", "working");
     const JSZip = (await import("jszip")).default; // lazy: nur beim ZIP-Export laden
     const { bundle, creatives } = result;
     const w = currentWebinar ?? webinar;
@@ -309,14 +340,16 @@ export default function Home() {
     root.folder("05_System-Export-oder-Doku")!.file("bundle.json", JSON.stringify(bundle, null, 2));
     if (plan) { const p = root.folder("06_Posting-Plan")!; p.file("posting-plan.md", planToMarkdown(plan, w)); p.file("posting-plan.csv", planToCsv(plan)); p.file("posting-plan.ics", planToIcs(plan)); }
     download(`Zyklus_${bundle.cycleSlug}.zip`, await zip.generateAsync({ type: "blob" }), "application/zip");
+    logStep("Zyklus als ZIP heruntergeladen ✓", "done");
   }
   function downloadPng(c: Creative) { download(c.filename, dataUriToBlob(c.dataUri), "image/png"); }
   async function requestVariant(ad: AdCopy): Promise<{ ad: AdCopy; creatives: Creative[] } | null> {
+    logStep("B-Variante (alternative Copy) wird erzeugt …", "working");
     try {
       const res = await fetch("/api/variant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ad, webinar: currentWebinar ?? webinar, brand: brand ?? undefined, design }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Variante fehlgeschlagen");
-      toast.success("B-Variante erzeugt ✓");
+      toast.success("B-Variante erzeugt ✓"); logStep("B-Variante erzeugt — per A/B-Schalter umschalten ✓", "done");
       return { ad: data.ad as AdCopy, creatives: data.creatives as Creative[] };
     } catch (e) { fail(e); return null; }
   }
@@ -330,6 +363,14 @@ export default function Home() {
   );
   const progress = plan ? 100 : result ? 85 : requiredOk ? 55 : 30;
   const statusLabel = plan ? "Fertig — inkl. Posting-Plan" : result ? "Assets fertig" : requiredOk ? "Bereit zum Generieren" : "Pflichtfelder ausfüllen (Titel, Datum, Uhrzeit, Host, Kernproblem)";
+  const busy = learning || importing || transcribing || loading || planning || analyzingAngles || sending !== null;
+  const nextStep = !requiredOk
+    ? "Webinar-Eckdaten eingeben (Schritt 2) — per PDF/Transkript/URL/Audio oder direkt im Formular."
+    : !result
+    ? "Bereit! Optional Marke lernen, Design & Angle-Lab — dann Assets generieren (Schritt 4)."
+    : !plan
+    ? "Assets fertig. Erstelle den Posting-Plan — oder lade den kompletten Zyklus als ZIP."
+    : "Alles fertig 🎉 — als ZIP exportieren oder per Webhook/Slack weitergeben.";
 
   // Tastenkürzel: ⌘/Ctrl+K = Befehlspalette, ⌘/Ctrl+↵ = Generieren. genRef hält die aktuelle Closure.
   const genRef = useRef<() => void>(() => {});
@@ -763,6 +804,9 @@ export default function Home() {
           </a>
         </footer>
       </div>
+
+      {/* Aktivitäts-/Guide-Anzeige — zeigt immer, was läuft + den nächsten Schritt */}
+      <ActivityLog entries={log} nextStep={nextStep} busy={busy} />
 
       {/* Sticky Aktionsleiste — Hauptaktion immer erreichbar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
