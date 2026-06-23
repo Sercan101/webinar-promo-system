@@ -124,18 +124,21 @@ export function CreativeElement({
   ad, webinar, brand, format = DEFAULT_FORMAT, design = DEFAULT_DESIGN,
 }: { ad: AdCopy; webinar: Webinar; brand: Brand; format?: Format; design?: CreativeDesign }) {
   const accent = design.accent || brand.palette.accent;
+  const tOp = design.textOpacity ?? 1; // Schrift-Helligkeit (Opacity)
+  const textHex = design.textColor || brand.palette.text;
   const pal: Pal = {
     ...brand.palette,
     accent,
     accentSoft: design.accent || brand.palette.accentSoft,
-    text: design.textColor || brand.palette.text,
-    textMuted: design.textColor ? rgba(design.textColor, 0.72) : brand.palette.textMuted,
+    text: tOp < 1 ? rgba(textHex, tOp) : textHex,
+    textMuted: design.textColor ? rgba(textHex, 0.72 * tOp) : (tOp < 1 ? rgba(brand.palette.textMuted, tOp) : brand.palette.textMuted),
     bg: design.bgColor || brand.palette.bg,
     bgGradientTo: design.bgColor || brand.palette.bgGradientTo,
   };
   const tpl = design.template;
+  const show = (v?: boolean) => v !== false; // Element sichtbar, solange nicht explizit false
   const speakers: Speaker[] = [webinar.host, ...(webinar.guest ? [webinar.guest] : [])];
-  const headlineSize = Math.round((ad.headline.length > 34 ? 86 : 104) * format.headlineScale);
+  const headlineSize = Math.round((ad.headline.length > 34 ? 86 : 104) * format.headlineScale * (design.headlineScale ?? 1));
   const hasBg = !!design.bgImage;
   const dim = design.bgDim ?? 0.62;
 
@@ -190,8 +193,8 @@ export function CreativeElement({
 
       {/* Kopf */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 1 }}>
-        <Logo design={design} pal={pal} brand={brand} />
-        {badge}
+        {show(design.showLogo) ? <Logo design={design} pal={pal} brand={brand} /> : <div style={{ display: "flex" }} />}
+        {show(design.showBadge) ? badge : <div style={{ display: "flex" }} />}
       </div>
       {tpl === "editorial" && <div style={{ display: "flex", height: 2, background: pal.line, marginTop: 24, zIndex: 1 }} />}
 
@@ -210,21 +213,21 @@ export function CreativeElement({
         <Headline text={ad.headline} accent={ad.accentWord} size={headlineSize} pal={pal} />
         {tpl === "editorial" && <div style={{ display: "flex", width: 120, height: 6, background: pal.accent }} />}
 
-        <div style={{ display: "flex", fontSize: 34, fontWeight: 500, color: pal.textMuted, lineHeight: 1.25, maxWidth: 860 }}>{ad.subline}</div>
+        {show(design.showSubline) ? <div style={{ display: "flex", fontSize: 34, fontWeight: 500, color: pal.textMuted, lineHeight: 1.25, maxWidth: 860 }}>{ad.subline}</div> : null}
 
-        {ad.variant === "authority" ? <div style={{ display: "flex", marginTop: 12 }}><SpeakerRow speakers={speakers} pal={pal} big /></div> : null}
+        {ad.variant === "authority" && show(design.showSpeakers) ? <div style={{ display: "flex", marginTop: 12 }}><SpeakerRow speakers={speakers} pal={pal} big /></div> : null}
       </div>
 
       {/* Fuss */}
       <div style={{ display: "flex", flexDirection: "column", gap: 28, zIndex: 1 }}>
-        {ad.variant !== "authority" ? <SpeakerRow speakers={speakers} pal={pal} /> : null}
+        {ad.variant !== "authority" && show(design.showSpeakers) ? <SpeakerRow speakers={speakers} pal={pal} /> : null}
         <div style={{ display: "flex", height: tpl === "editorial" ? 2 : 1, background: pal.line }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column" }}>
             <div style={{ display: "flex", fontSize: 24, fontWeight: 700, color: pal.text }}>{brand.url}</div>
             <div style={{ display: "flex", fontSize: 20, fontWeight: 500, color: pal.textMuted }}>{webinar.date} · {webinar.time}</div>
           </div>
-          {cta}
+          {show(design.showCta) ? cta : <div style={{ display: "flex" }} />}
         </div>
       </div>
     </div>

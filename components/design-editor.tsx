@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { Upload, Check } from "lucide-react";
+import { Upload, Check, Eye, EyeOff } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { compressImage } from "@/lib/file";
@@ -18,6 +18,14 @@ const FONTS = [
   { value: "Space Grotesk", label: "Space Grotesk (technisch, modern)" },
   { value: "Playfair Display", label: "Playfair (elegant, Serif)" },
   { value: "Oswald", label: "Oswald (schmal, plakativ)" },
+];
+
+const ELEMENTS: { key: "showLogo" | "showBadge" | "showSubline" | "showSpeakers" | "showCta"; label: string }[] = [
+  { key: "showLogo", label: "Logo/Marke" },
+  { key: "showBadge", label: "Badge" },
+  { key: "showSubline", label: "Untertitel" },
+  { key: "showSpeakers", label: "Speaker" },
+  { key: "showCta", label: "CTA" },
 ];
 
 function UploadRow({ label, hint, value, onChange, maxDim }: { label: string; hint: string; value?: string; onChange: (v?: string) => void; maxDim: number }) {
@@ -90,6 +98,34 @@ export function DesignEditor({ design, onChange }: { design: CreativeDesign; onC
           className="w-full h-9 rounded-md border border-input bg-transparent px-3 text-sm">
           {FONTS.map((f) => <option key={f.value} value={f.value} className="bg-background">{f.label}</option>)}
         </select>
+      </div>
+
+      {/* Headline-Größe */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Headline-Größe ({Math.round((design.headlineScale ?? 1) * 100)}%)</Label>
+        <input type="range" min={0.7} max={1.3} step={0.05} value={design.headlineScale ?? 1} onChange={(e) => up({ headlineScale: Number(e.target.value) })} className="w-full accent-primary" />
+      </div>
+
+      {/* Schrift-Helligkeit */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Schrift-Helligkeit ({Math.round((design.textOpacity ?? 1) * 100)}%)</Label>
+        <input type="range" min={0.5} max={1} step={0.05} value={design.textOpacity ?? 1} onChange={(e) => up({ textOpacity: Number(e.target.value) })} className="w-full accent-primary" />
+      </div>
+
+      {/* Elemente ein-/ausblenden */}
+      <div className="space-y-1.5">
+        <Label className="text-xs">Elemente ein-/ausblenden</Label>
+        <div className="flex flex-wrap gap-2">
+          {ELEMENTS.map(({ key, label }) => {
+            const on = design[key] !== false;
+            return (
+              <button key={key} type="button" onClick={() => up({ [key]: on ? false : undefined })}
+                className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition ${on ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:border-muted-foreground/40"}`}>
+                {on ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />} {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Uploads */}

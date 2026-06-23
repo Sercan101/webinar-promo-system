@@ -96,6 +96,14 @@ export interface CreativeDesign {
   bgDim?: number; // 0..1 Abdunkelung des Hintergrundbilds (Lesbarkeit)
   logo?: string; // data-URI: eigenes Logo
   font?: string; // Schrift-Familie (z.B. "Oswald"); leer = Inter
+  headlineScale?: number; // 0.7..1.3 — Headline-Größe (Standard 1)
+  textOpacity?: number; // 0.5..1 — Schrift-Helligkeit (Standard 1)
+  // Elemente ein-/ausblenden (undefined/true = sichtbar)
+  showLogo?: boolean;
+  showBadge?: boolean;
+  showSubline?: boolean;
+  showSpeakers?: boolean;
+  showCta?: boolean;
 }
 
 export interface AdCopy {
