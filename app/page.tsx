@@ -401,9 +401,9 @@ export default function Home() {
 
           {/* Eigene Beispiel-Anzeigen hochladen (Drag & Drop) */}
           <div className="mt-4 space-y-2.5">
-            <Dropzone accept="image/*" multiple busy={learning}
+            <Dropzone accept="image/*" multiple busy={learning} maxMB={25}
               title="Eigene Beispiel-Anzeigen hierher ziehen oder klicken"
-              hint="PNG/JPG der Scaling-Champions-Anzeigen — daraus lernt das System Farben & Ton. Optional; ohne Upload werden die mitgelieferten Beispiele genutzt."
+              hint="PNG/JPG der Scaling-Champions-Anzeigen — daraus lernt das System Farben & Ton. Optional; ohne Upload werden die mitgelieferten Beispiele genutzt. Bilder werden automatisch komprimiert."
               onFiles={addExamples} />
             {exampleImages.length > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -452,7 +452,7 @@ export default function Home() {
             <TabsContent value="formular" className="mt-4"><WebinarForm webinar={webinar} onChange={setWebinar} /></TabsContent>
             <TabsContent value="pdf" className="mt-4 space-y-3">
               <p className="text-sm text-muted-foreground">Ziehe ein <span className="text-foreground">Briefing als PDF</span> hierher — der Text wird im Browser ausgelesen (oder per Vision/OCR), die Felder werden automatisch extrahiert. Ideal für die Client-Briefings von Scaling Champions.</p>
-              <Dropzone accept="application/pdf,.pdf" busy={importing}
+              <Dropzone accept="application/pdf,.pdf" busy={importing} maxMB={30}
                 title="PDF-Briefing hierher ziehen oder klicken"
                 hint="Funktioniert auch ohne Text-Ebene (gescannt) — dann per Bild/OCR."
                 onFiles={(files) => { if (files[0]) extractFromPdf(files[0]); }} />
@@ -470,7 +470,7 @@ export default function Home() {
             </TabsContent>
             <TabsContent value="audio" className="mt-4 space-y-3">
               <p className="text-sm text-muted-foreground">Ziehe eine <span className="text-foreground">Audio- oder Video-Datei</span> hierher (bis 150 MB) — sie wird im Browser automatisch komprimiert (mono, 16 kHz) und bei Bedarf auf die ersten Minuten gekürzt, damit sie passt. Gemini hört zu und füllt das Formular.</p>
-              <Dropzone accept="audio/*,video/*" busy={transcribing}
+              <Dropzone accept="audio/*,video/*" busy={transcribing} maxMB={150}
                 title="Audio-/Video-Datei hierher ziehen oder klicken"
                 hint="Wird im Browser komprimiert (mono, 16 kHz) & ggf. gekürzt."
                 onFiles={(files) => { if (files[0]) transcribeMedia(files[0]); }} />

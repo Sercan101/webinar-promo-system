@@ -11,6 +11,7 @@ export function Dropzone({
   busy = false,
   title,
   hint,
+  maxMB,
   onFiles,
 }: {
   accept: string;
@@ -19,14 +20,23 @@ export function Dropzone({
   busy?: boolean;
   title: string;
   hint?: string;
+  maxMB?: number;
   onFiles: (files: File[]) => void;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
+  const [err, setErr] = useState("");
 
   function handle(list: FileList | null) {
     if (!list || list.length === 0) return;
-    onFiles(Array.from(list));
+    let files = Array.from(list);
+    if (maxMB) {
+      const limit = maxMB * 1024 * 1024;
+      const tooBig = files.filter((f) => f.size > limit);
+      files = files.filter((f) => f.size <= limit);
+      setErr(tooBig.length ? `${tooBig.length === 1 ? "Datei" : tooBig.length + " Dateien"} zu groß — max ${maxMB} MB pro Datei.` : "");
+    }
+    if (files.length) onFiles(files);
   }
 
   const blocked = disabled || busy;
@@ -48,6 +58,8 @@ export function Dropzone({
         : <UploadCloud className="h-6 w-6 mx-auto text-muted-foreground mb-1.5" />}
       <p className="text-sm font-medium">{title}</p>
       {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
+      {maxMB && <p className="text-[11px] font-medium text-muted-foreground mt-1">max. {maxMB} MB pro Datei</p>}
+      {err && <p className="text-[11px] text-destructive mt-1">{err}</p>}
     </div>
   );
 }
