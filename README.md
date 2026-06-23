@@ -7,6 +7,10 @@ Ein wiederverwendbares System, das aus einem Webinar Angles, markenkonforme Anze
 
 [**▶ Live-Demo**](https://webinar-promo-system.vercel.app) · Built with Next.js 16 · Google Gemini · shadcn/ui
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSercan101%2Fwebinar-promo-system&env=GEMINI_API_KEY,APP_PASSWORD,AUTH_TOKEN&envDescription=GEMINI_API_KEY%20ist%20Pflicht.%20APP_PASSWORD%2FAUTH_TOKEN%20optional%20(Login).&envLink=https%3A%2F%2Fgithub.com%2FSercan101%2Fwebinar-promo-system%23environment-variablen)
+&nbsp;
+![CI](https://github.com/Sercan101/webinar-promo-system/actions/workflows/ci.yml/badge.svg)
+
 <img src="docs/screenshots/creative-bold.png" width="32%"> <img src="docs/screenshots/creative-minimal.png" width="32%"> <img src="docs/screenshots/creative-editorial.png" width="32%">
 
 <sub>3 Design-Vorlagen (Bold · Minimal · Editorial) — alles im Code generiert, kein „Text auf Stock-Foto".</sub>
@@ -14,6 +18,14 @@ Ein wiederverwendbares System, das aus einem Webinar Angles, markenkonforme Anze
 </div>
 
 ---
+
+## 📸 Die Oberfläche
+
+Ein geführter 4-Schritt-Wizard mit Onboarding-Tour, Live-Vorschau und Hell/Dunkel-Modus:
+
+<img src="docs/screenshots/app-wizard.png" width="49%"> <img src="docs/screenshots/app-design.png" width="49%">
+
+<sub>Links: geführtes Formular (kein JSON). Rechts: Design-Editor mit Live-Vorschau (Vorlage, Farbe, Schrift, eigene Bilder).</sub>
 
 ## ✨ Was es kann
 
@@ -25,6 +37,7 @@ Ein wiederverwendbares System, das aus einem Webinar Angles, markenkonforme Anze
 | 🖼️ | **Design-Engine** — 3 Vorlagen, eigene Akzentfarbe, eigene Schrift, eigenes Logo & Hintergrundbild — als PNG gerendert (Satori), mit **Live-Vorschau** |
 | 📐 | **3 Formate je Anzeige** — 1:1 Feed · 4:5 Feed · 9:16 Story |
 | ⭐ | **Qualitäts-Loop** — ein zweiter KI-Pass bewertet jedes Asset (0–10) und bessert schwache automatisch nach |
+| 🔀 | **A/B-Varianten** — pro Anzeige eine alternative Copy-Variante zum Testen erzeugen |
 | 📧 | **E-Mail-Einladung** — im Stil eurer Beispiele (Problem-Agitate-Solve) |
 | 🗓️ | **Posting-Plan** — KI-Sequenz über alle Kanäle + kanal-spezifische Captions, Export als `.ics` / `.csv` / `.md` |
 | 📱 | **Feed-Mockup** — Creatives im LinkedIn-/Instagram-Post-Rahmen ansehen |

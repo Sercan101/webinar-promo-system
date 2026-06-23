@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import {
   Sparkles, FileText, Wand2, Calendar, Send, Download, History as HistoryIcon,
   LogOut, Loader2, Palette, MessageSquare, Webhook, RotateCcw, Trash2, ChevronRight, Paintbrush, Info, HelpCircle, Copy, FilePlus2, Eraser,
-  Mic, ThumbsUp, MessageCircle, Share2, Gauge, ListChecks,
+  ThumbsUp, MessageCircle, Share2, Gauge, ListChecks,
 } from "lucide-react";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
@@ -115,7 +115,6 @@ export default function Home() {
 
   useEffect(() => {
     try { if (!localStorage.getItem("promo-tour-seen-v1")) setTimeout(startTour, 700); } catch { /* */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fail = (e: unknown) => toast.error(e instanceof Error ? e.message : String(e));
@@ -241,6 +240,15 @@ export default function Home() {
     download(`Zyklus_${bundle.cycleSlug}.zip`, await zip.generateAsync({ type: "blob" }), "application/zip");
   }
   function downloadPng(c: Creative) { download(c.filename, dataUriToBlob(c.dataUri), "image/png"); }
+  async function requestVariant(ad: AdCopy): Promise<{ ad: AdCopy; creatives: Creative[] } | null> {
+    try {
+      const res = await fetch("/api/variant", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ad, webinar: currentWebinar ?? webinar, brand: brand ?? undefined, design }) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Variante fehlgeschlagen");
+      toast.success("B-Variante erzeugt ✓");
+      return { ad: data.ad as AdCopy, creatives: data.creatives as Creative[] };
+    } catch (e) { fail(e); return null; }
+  }
   async function logout() { await fetch("/api/auth", { method: "DELETE" }); router.replace("/login"); router.refresh(); }
 
   const eff = result?.bundle.qa ? (result.bundle.qa.after ?? result.bundle.qa.before) : null;
@@ -457,7 +465,7 @@ export default function Home() {
             <section>
               <SectionTitle>Anzeigen (Bild + Text) · 3 Formate je Anzeige</SectionTitle>
               <div className="grid gap-5 md:grid-cols-3">
-                {result.bundle.ads.map((ad, i) => (<AdCard key={i} ad={ad} creatives={result.creatives.filter((c) => c.index === i)} critique={eff?.ads[i]} onDownload={downloadPng} />))}
+                {result.bundle.ads.map((ad, i) => (<AdCard key={i} ad={ad} creatives={result.creatives.filter((c) => c.index === i)} critique={eff?.ads[i]} onDownload={downloadPng} onVariant={requestVariant} />))}
               </div>
             </section>
 
@@ -573,37 +581,59 @@ function ScoreBadge({ score }: { score: number }) {
   const color = score >= 8 ? "#22C55E" : score >= 7 ? "#EAB308" : "#E11D2A";
   return <span className="text-xs font-bold rounded-full px-2.5 py-0.5 border" style={{ color, borderColor: color }}>{score}/10</span>;
 }
-function AdCard({ ad, creatives, critique, onDownload }: { ad: AdCopy; creatives: Creative[]; critique?: AssetCritique; onDownload: (c: Creative) => void }) {
+function AdCard({ ad, creatives, critique, onDownload, onVariant }: { ad: AdCopy; creatives: Creative[]; critique?: AssetCritique; onDownload: (c: Creative) => void; onVariant: (ad: AdCopy) => Promise<{ ad: AdCopy; creatives: Creative[] } | null> }) {
   const [fmt, setFmt] = useState(creatives[0]?.formatKey ?? "");
   const [feedView, setFeedView] = useState(false);
-  const current = creatives.find((c) => c.formatKey === fmt) ?? creatives[0];
-  const caption = `${ad.hook}\n\n${ad.body}\n\nDu erhältst:\n${ad.bullets.map((b) => `✓ ${b}`).join("\n")}\n\n👉 ${ad.cta}`;
+  const [variant, setVariant] = useState<{ ad: AdCopy; creatives: Creative[] } | null>(null);
+  const [side, setSide] = useState<"A" | "B">("A");
+  const [making, setMaking] = useState(false);
+
+  const activeAd = side === "B" && variant ? variant.ad : ad;
+  const activeCreatives = side === "B" && variant ? variant.creatives : creatives;
+  const current = activeCreatives.find((c) => c.formatKey === fmt) ?? activeCreatives[0];
+  const caption = `${activeAd.hook}\n\n${activeAd.body}\n\nDu erhältst:\n${activeAd.bullets.map((b) => `✓ ${b}`).join("\n")}\n\n👉 ${activeAd.cta}`;
+
+  async function makeVariant() {
+    setMaking(true);
+    const v = await onVariant(ad);
+    if (v) { setVariant(v); setSide("B"); }
+    setMaking(false);
+  }
+
   return (
     <Card><CardContent className="pt-6">
       <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-        <Tabs value={fmt} onValueChange={setFmt}><TabsList>{creatives.map((c) => <TabsTrigger key={c.formatKey} value={c.formatKey}>{c.formatLabel}</TabsTrigger>)}</TabsList></Tabs>
+        {variant ? (
+          <div className="flex gap-0.5 rounded-md border border-border p-0.5">
+            <button onClick={() => setSide("A")} className={`text-xs px-3 py-1 rounded ${side === "A" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>A</button>
+            <button onClick={() => setSide("B")} className={`text-xs px-3 py-1 rounded ${side === "B" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}>B</button>
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" onClick={makeVariant} disabled={making}>{making ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Copy className="h-3.5 w-3.5" />} B-Variante</Button>
+        )}
         <div className="flex gap-0.5 rounded-md border border-border p-0.5">
           <button onClick={() => setFeedView(false)} className={`text-xs px-2.5 py-1 rounded ${!feedView ? "bg-secondary" : "text-muted-foreground"}`}>Anzeige</button>
           <button onClick={() => setFeedView(true)} className={`text-xs px-2.5 py-1 rounded ${feedView ? "bg-secondary" : "text-muted-foreground"}`}>Im Feed</button>
         </div>
       </div>
+      <Tabs value={fmt} onValueChange={setFmt} className="mb-3"><TabsList>{activeCreatives.map((c) => <TabsTrigger key={c.formatKey} value={c.formatKey}>{c.formatLabel}</TabsTrigger>)}</TabsList></Tabs>
       {feedView
-        ? <FeedMockup img={current.dataUri} caption={ad.hook} />
+        ? <FeedMockup img={current.dataUri} caption={activeAd.hook} />
         /* eslint-disable-next-line @next/next/no-img-element */
-        : <img src={current.dataUri} alt={ad.headline} className="w-full rounded-lg border border-border block" />}
+        : <img src={current.dataUri} alt={activeAd.headline} className="w-full rounded-lg border border-border block" />}
       <div className="flex items-center justify-between gap-2 mt-3 mb-2">
-        <div className="flex items-center gap-2"><span className="text-[11px] text-primary font-semibold uppercase">{ad.variant} · {ad.angleId}</span>{critique && <ScoreBadge score={critique.score} />}</div>
+        <div className="flex items-center gap-2"><span className="text-[11px] text-primary font-semibold uppercase">{activeAd.variant} · {activeAd.angleId}{variant ? ` · ${side}` : ""}</span>{side === "A" && critique && <ScoreBadge score={critique.score} />}</div>
         <div className="flex items-center gap-1">
           <CopyBtn text={caption} label="Anzeigentext" />
           <Button variant="ghost" size="sm" onClick={() => onDownload(current)}><Download className="h-3.5 w-3.5" /> {current.formatLabel}</Button>
         </div>
       </div>
       <div className="text-sm leading-relaxed">
-        <p className="font-medium">{ad.hook}</p>
-        <p className="text-muted-foreground my-1.5">{ad.body}</p>
+        <p className="font-medium">{activeAd.hook}</p>
+        <p className="text-muted-foreground my-1.5">{activeAd.body}</p>
         <p className="font-medium mt-2">Du erhältst:</p>
-        <ul className="list-disc pl-5 text-muted-foreground mt-1 space-y-0.5">{ad.bullets.map((b, j) => <li key={j}>{b}</li>)}</ul>
-        <p className="mt-2.5 text-primary font-semibold">👉 {ad.cta}</p>
+        <ul className="list-disc pl-5 text-muted-foreground mt-1 space-y-0.5">{activeAd.bullets.map((b, j) => <li key={j}>{b}</li>)}</ul>
+        <p className="mt-2.5 text-primary font-semibold">👉 {activeAd.cta}</p>
       </div>
     </CardContent></Card>
   );

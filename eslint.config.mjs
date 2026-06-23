@@ -5,6 +5,14 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    rules: {
+      // Apostrophe/Quotes in deutschem UI-Text sind ok (rein stilistisch).
+      "react/no-unescaped-entities": "off",
+      // Standard-Pattern (mounted-Guard) für next-themes — kein Performance-Problem.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:

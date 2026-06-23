@@ -6,7 +6,7 @@ import { geminiJson } from "./gemini";
 import type { Angle, AdCopy, Brand, EmailInvite, Webinar } from "./types";
 import {
   adsJsonSchema, anglesJsonSchema, anglesLabJsonSchema, emailJsonSchema,
-  zAdsResult, zAnglesResult, zAnglesLab, zEmail,
+  zAdsResult, zAdsAny, zAnglesResult, zAnglesLab, zEmail,
 } from "./schema";
 
 // Modell-Fallback-Kette (alle im Free-Tier). Bei Quota/Überlast auf das nächste Modell.
@@ -194,6 +194,36 @@ Antworte ausschließlich im vorgegebenen JSON-Schema.`;
     apiKey, system, prompt,adsJsonSchema, zAdsResult,
   );
   return ads;
+}
+
+// A/B: erzeugt eine deutlich andere Variante einer einzelnen Anzeige.
+export async function generateVariant(
+  apiKey: string,
+  brand: Brand,
+  webinar: Webinar,
+  ad: AdCopy,
+): Promise<AdCopy> {
+  const system = `Du bist Performance-Marketer & Copywriter bei ${brand.name}.
+${brandContext(brand)}`;
+
+  const prompt = `${webinarContext(webinar)}
+
+Hier ist eine bestehende Anzeige (Variante A):
+- angleId: ${ad.angleId} | variant: ${ad.variant}
+- Headline: ${ad.headline} (Akzent: ${ad.accentWord})
+- Subline: ${ad.subline}
+- Hook: ${ad.hook}
+- Bullets: ${ad.bullets.join(" | ")}
+- CTA: ${ad.cta}
+
+AUFGABE: Erzeuge GENAU 1 deutlich ANDERE Variante B für dieselbe Anzeige (neuer Blickwinkel,
+andere Headline & Bullets, frischer Hook) — zum A/B-Testen. Behalte angleId="${ad.angleId}" und variant="${ad.variant}".
+Halte die Format-Regeln ein: headline max ${brand.creative.headlineMaxWords} Wörter; accentWord MUSS wortwörtlich in headline vorkommen;
+subline max ${brand.creative.sublineMaxChars} Zeichen; ${ad.variant === "proof" ? "proofStat mit harter Zahl" : 'proofStat = ""'}; GENAU 4 Bullets; cta aus ${JSON.stringify(brand.adCopyFormat.ctaOptions)}.
+Antworte ausschließlich im JSON-Schema (Feld "ads" mit genau einer Anzeige).`;
+
+  const { ads } = await generateStructured(apiKey, system, prompt, adsJsonSchema, zAdsAny);
+  return ads[0];
 }
 
 export async function generateEmail(

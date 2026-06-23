@@ -23,6 +23,11 @@ const nextConfig: NextConfig = {
       "./brand/**/*",
       "./node_modules/next/dist/compiled/@vercel/og/**/*",
     ],
+    "/api/variant": [
+      "./assets/**/*",
+      "./brand/**/*",
+      "./node_modules/next/dist/compiled/@vercel/og/**/*",
+    ],
   },
 };
 
