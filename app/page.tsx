@@ -1,20 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import JSZip from "jszip";
 import { toast } from "sonner";
 import {
   Sparkles, FileText, Wand2, Calendar, Send, Download, History as HistoryIcon,
   LogOut, Loader2, Palette, MessageSquare, Webhook, RotateCcw, Trash2, ChevronRight, Paintbrush, Info, HelpCircle, Copy, FilePlus2, Eraser,
-  ThumbsUp, MessageCircle, Share2, Gauge, ListChecks, Code2, Rocket,
+  ThumbsUp, MessageCircle, Share2, Gauge, ListChecks, Code2, Rocket, Check, Command as CommandIcon, Moon, Sun,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
-import { driver } from "driver.js";
+import { m, AnimatePresence } from "motion/react";
+import { useTheme } from "next-themes";
 import "driver.js/dist/driver.css";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Reveal, gridParent, gridChild } from "@/components/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from "@/components/ui/command";
 import { readFileAsDataUri } from "@/lib/file";
 import defaultWebinar from "@/inputs/webinar.json";
 import {
@@ -80,19 +80,32 @@ export default function Home() {
   const [analyzingAngles, setAnalyzingAngles] = useState(false);
   const [selectedAngleIds, setSelectedAngleIds] = useState<string[]>([]);
   const [transcribing, setTranscribing] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const { setTheme } = useTheme();
 
-  // Live-Vorschau: gerendertes Beispiel-Creative bei jeder Design-/Webinar-Änderung (debounced).
+  // Nur die Felder, die wirklich im Creative landen — sonst feuert jeder Tastendruck in
+  // unbeteiligten Feldern (Pains, Lösung …) einen teuren Render-Call.
+  const previewSig = useMemo(() => JSON.stringify({
+    t: webinar.title, s: webinar.subtitle, f: webinar.format, d: webinar.date, ti: webinar.time,
+    u: webinar.registrationUrl, h: webinar.host, g: webinar.guest, design, brand,
+  }), [webinar, design, brand]);
+  const previewCache = useRef<Map<string, string>>(new Map());
+
+  // Live-Vorschau: debounced, mit Cache (zurückschalten = sofort, kein neuer Call).
   useEffect(() => {
+    const cached = previewCache.current.get(previewSig);
+    if (cached) { setPreview(cached); return; }
     const t = setTimeout(async () => {
       setPreviewing(true);
       try {
         const res = await fetch("/api/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webinar, design, brand: brand ?? undefined }) });
         const data = await res.json();
-        if (res.ok) setPreview(data.dataUri);
+        if (res.ok) { setPreview(data.dataUri); previewCache.current.set(previewSig, data.dataUri); }
       } catch { /* still */ } finally { setPreviewing(false); }
     }, 550);
     return () => clearTimeout(t);
-  }, [webinar, design, brand]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewSig]);
 
   useEffect(() => {
     try {
@@ -102,7 +115,8 @@ export default function Home() {
     } catch { /* ignore */ }
   }, []);
 
-  function startTour() {
+  async function startTour() {
+    const { driver } = await import("driver.js"); // lazy: hält driver.js aus dem Initial-Bundle
     driver({
       showProgress: true, nextBtnText: "Weiter", prevBtnText: "Zurück", doneBtnText: "Fertig",
       onDestroyed: () => { try { localStorage.setItem("promo-tour-seen-v1", "1"); } catch { /* */ } },
@@ -230,6 +244,7 @@ export default function Home() {
 
   async function downloadZip() {
     if (!result) return;
+    const JSZip = (await import("jszip")).default; // lazy: nur beim ZIP-Export laden
     const { bundle, creatives } = result;
     const w = currentWebinar ?? webinar;
     const zip = new JSZip();
@@ -255,7 +270,27 @@ export default function Home() {
   async function logout() { await fetch("/api/auth", { method: "DELETE" }); router.replace("/login"); router.refresh(); }
 
   const eff = result?.bundle.qa ? (result.bundle.qa.after ?? result.bundle.qa.before) : null;
-  const progress = plan ? 100 : result ? 70 : 35;
+  // Pflichtfelder für „Generieren" — Basis für Validierung, Häkchen & Fortschritt.
+  const requiredOk = Boolean(
+    webinar.title?.trim() && webinar.date?.trim() && webinar.time?.trim() &&
+    webinar.host?.name?.trim() && webinar.coreProblem?.trim()
+  );
+  const progress = plan ? 100 : result ? 85 : requiredOk ? 55 : 30;
+  const statusLabel = plan ? "Fertig — inkl. Posting-Plan" : result ? "Assets fertig" : requiredOk ? "Bereit zum Generieren" : "Pflichtfelder ausfüllen (Titel, Datum, Uhrzeit, Host, Kernproblem)";
+
+  // Tastenkürzel: ⌘/Ctrl+K = Befehlspalette, ⌘/Ctrl+↵ = Generieren. genRef hält die aktuelle Closure.
+  const genRef = useRef<() => void>(() => {});
+  useEffect(() => { genRef.current = () => { if (requiredOk && !loading) generate(); }; });
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.key.toLowerCase() === "k") { e.preventDefault(); setPaletteOpen((o) => !o); }
+      else if (mod && e.key === "Enter") { e.preventDefault(); genRef.current(); }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+  const runCmd = useCallback((fn: () => void) => { setPaletteOpen(false); fn(); }, []);
 
   return (
     <main className="relative min-h-screen">
@@ -263,24 +298,25 @@ export default function Home() {
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[440px] bg-gradient-to-b from-primary/10 via-primary/[0.035] to-transparent" />
       <div className="mx-auto max-w-5xl px-5 py-8 pb-24">
         {/* Header */}
-        <motion.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between gap-3 flex-wrap">
+        <m.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/55 shadow-sm"><Sparkles className="h-4 w-4 text-primary-foreground" /></span>
             <h1 className="text-lg font-bold">Webinar-Promo-System</h1>
             <Badge variant="outline" className="text-muted-foreground">Scaling Champions</Badge>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={startTour}><HelpCircle className="h-4 w-4" /> Tour</Button>
+            <Button variant="ghost" size="sm" onClick={() => setPaletteOpen(true)} className="gap-1.5"><CommandIcon className="h-4 w-4" /><span className="hidden sm:inline">Befehle</span><kbd className="hidden sm:inline rounded border border-border px-1 text-[10px] text-muted-foreground">K</kbd></Button>
+            <Button variant="ghost" size="sm" onClick={startTour}><HelpCircle className="h-4 w-4" /><span className="hidden sm:inline"> Tour</span></Button>
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={logout}><LogOut className="h-4 w-4" /> Abmelden</Button>
+            <Button variant="ghost" size="sm" onClick={logout}><LogOut className="h-4 w-4" /><span className="hidden sm:inline"> Abmelden</span></Button>
           </div>
-        </motion.header>
+        </m.header>
 
         {/* Hero-Claim */}
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }} className="mt-9">
+        <m.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }} className="mt-9">
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-balance">Webinar rein → fertige Promo-Assets raus.</h2>
           <p className="text-muted-foreground mt-2 max-w-2xl">Angles, markenkonforme Anzeigen (Bild&nbsp;+&nbsp;Text), E-Mail-Einladung, Qualitäts-Check und Posting-Plan — in einem geführten Durchlauf.</p>
-        </motion.div>
+        </m.div>
 
         {/* So funktioniert's */}
         <Card className="mt-5 bg-muted/30">
@@ -298,11 +334,11 @@ export default function Home() {
 
         <div className="mt-6 flex items-center gap-3">
           <Progress value={progress} className="h-1.5" />
-          <span className="text-xs text-muted-foreground whitespace-nowrap">{progress === 100 ? "Fertig" : progress === 70 ? "Assets fertig" : "Setup"}</span>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">{statusLabel}</span>
         </div>
 
         {/* Step 1 — Marke */}
-        <StepCard id="step-marke" n={1} icon={<Palette className="h-4 w-4" />} title="Marke" desc="Das Brand-Kit bestimmt Farben & Ton. Standard nutzen oder aus euren echten Beispiel-Anzeigen ableiten lassen.">
+        <StepCard id="step-marke" n={1} icon={<Palette className="h-4 w-4" />} title="Marke" desc="Das Brand-Kit bestimmt Farben & Ton. Standard nutzen oder aus euren echten Beispiel-Anzeigen ableiten lassen." done={Boolean(brand)}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <Badge variant={brand ? "default" : "secondary"}>{brand ? "aus Beispielen gelernt" : "Standard-Kit aktiv"}</Badge>
             <Button variant="outline" size="sm" onClick={learnBrand} disabled={learning}>
@@ -325,7 +361,7 @@ export default function Home() {
         </StepCard>
 
         {/* Step 2 — Webinar */}
-        <StepCard id="step-webinar" n={2} icon={<FileText className="h-4 w-4" />} title="Webinar" desc="Trag die Webinar-Daten ein. Am einfachsten über das Formular — oder lass sie aus einem Transkript / einer Landingpage automatisch ausfüllen.">
+        <StepCard id="step-webinar" n={2} icon={<FileText className="h-4 w-4" />} title="Webinar" desc="Trag die Webinar-Daten ein. Am einfachsten über das Formular — oder lass sie aus einem Transkript / einer Landingpage automatisch ausfüllen." done={requiredOk}>
           <div className="flex gap-2 mb-3">
             <Button variant="outline" size="sm" onClick={() => setWebinar(structuredClone(defaultWebinar) as unknown as Webinar)}><FilePlus2 className="h-3.5 w-3.5" /> Beispiel laden</Button>
             <Button variant="ghost" size="sm" onClick={() => setWebinar(EMPTY_WEBINAR)}><Eraser className="h-3.5 w-3.5" /> Leeren</Button>
@@ -371,14 +407,14 @@ export default function Home() {
               <p className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">Live-Vorschau {previewing && <Loader2 className="h-3 w-3 animate-spin" />}</p>
               <AnimatePresence mode="wait">
                 {preview ? (
-                  <motion.img key={preview} src={preview} alt="Vorschau"
+                  <m.img key={preview} src={preview} alt="Vorschau"
                     initial={{ opacity: 0, scale: 0.985 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
                     transition={{ duration: 0.35 }}
                     className="w-full rounded-lg border border-border" />
                 ) : (
-                  <motion.div key="ph" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="aspect-[4/5] rounded-lg overflow-hidden border border-border">
+                  <m.div key="ph" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="aspect-[4/5] rounded-lg overflow-hidden border border-border">
                     <Skeleton className="h-full w-full" />
-                  </motion.div>
+                  </m.div>
                 )}
               </AnimatePresence>
               <p className="text-[11px] text-muted-foreground">Beispiel mit dem aktuellen Titel & Design — die echten Anzeigen entstehen in Schritt 4.</p>
@@ -387,7 +423,7 @@ export default function Home() {
         </StepCard>
 
         {/* Step 4 — Generieren */}
-        <StepCard id="step-generieren" n={4} icon={<Sparkles className="h-4 w-4" />} title="Generieren" desc="Erzeugt Angles, 3 Anzeigen × 3 Formate, E-Mail und einen automatischen Qualitäts-Check.">
+        <StepCard id="step-generieren" n={4} icon={<Sparkles className="h-4 w-4" />} title="Generieren" desc="Erzeugt Angles, 3 Anzeigen × 3 Formate, E-Mail und einen automatischen Qualitäts-Check." done={Boolean(result)}>
           {/* Angle-Lab: optional Angles vorab bewerten & auswählen */}
           <div className="mb-5 rounded-lg border border-border p-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -419,11 +455,15 @@ export default function Home() {
             )}
           </div>
           <div className="flex items-center gap-3 flex-wrap">
-            <Button onClick={generate} disabled={loading} size="lg">
+            <Button onClick={generate} disabled={loading || !requiredOk} size="lg">
               {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Generiere … (≈30 Sek.)</> : <>Assets generieren{angleLab ? ` (${selectedAngleIds.length} Angles)` : ""} <ChevronRight className="h-4 w-4" /></>}
             </Button>
             {result && <Button variant="outline" onClick={downloadZip}><Download className="h-4 w-4" /> Zyklus als ZIP</Button>}
+            <span className="text-xs text-muted-foreground hidden sm:inline">Tipp: <kbd className="rounded border border-border px-1 py-0.5 text-[10px]">⌘</kbd><kbd className="rounded border border-border px-1 py-0.5 text-[10px]">↵</kbd> generiert · <kbd className="rounded border border-border px-1 py-0.5 text-[10px]">⌘</kbd><kbd className="rounded border border-border px-1 py-0.5 text-[10px]">K</kbd> Befehle</span>
           </div>
+          {!requiredOk && (
+            <p className="mt-2.5 text-xs text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" /> Fülle zuerst die Pflichtfelder in Schritt 2 aus: <span className="text-foreground">Titel, Datum, Uhrzeit, Host-Name, Kernproblem</span>.</p>
+          )}
         </StepCard>
 
         {/* Leerzustand: zeigt, wo der Output landet */}
@@ -440,7 +480,7 @@ export default function Home() {
         {/* Lade-Skelett während des Generierens */}
         <AnimatePresence>
           {loading && (
-            <motion.div key="gen-skel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-12">
+            <m.div key="gen-skel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-12">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4"><Loader2 className="h-4 w-4 animate-spin" /> Generiere Angles, Anzeigen, E-Mail &amp; Qualitäts-Check …</div>
               <div className="grid gap-5 md:grid-cols-3">
                 {[0, 1, 2].map((i) => (
@@ -452,7 +492,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
 
@@ -481,7 +521,7 @@ export default function Home() {
 
         {/* Results */}
         {result && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="mt-14 space-y-12">
+          <m.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="mt-14 space-y-12">
             <Reveal>
               <div className="flex items-center gap-3">
                 <Separator className="flex-1" />
@@ -508,27 +548,27 @@ export default function Home() {
 
             <section>
               <SectionTitle>Angles</SectionTitle>
-              <motion.div variants={gridParent} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid gap-4 md:grid-cols-3">
+              <m.div variants={gridParent} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid gap-4 md:grid-cols-3">
                 {result.bundle.angles.map((a) => (
-                  <motion.div key={a.id} variants={gridChild}>
+                  <m.div key={a.id} variants={gridChild}>
                     <Card className="h-full transition-colors duration-300 hover:border-primary/30">
                       <CardHeader><p className="text-xs text-primary font-semibold">{a.id}</p><CardTitle className="text-base">{a.name}</CardTitle></CardHeader>
                       <CardContent className="text-sm text-muted-foreground space-y-1.5"><p><span className="text-foreground font-medium">Pain:</span> {a.painAddressed}</p><p>{a.bigIdea}</p></CardContent>
                     </Card>
-                  </motion.div>
+                  </m.div>
                 ))}
-              </motion.div>
+              </m.div>
             </section>
 
             <section>
               <SectionTitle>Anzeigen (Bild + Text) · 3 Formate je Anzeige</SectionTitle>
-              <motion.div variants={gridParent} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid gap-5 md:grid-cols-3">
+              <m.div variants={gridParent} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid gap-5 md:grid-cols-3">
                 {result.bundle.ads.map((ad, i) => (
-                  <motion.div key={i} variants={gridChild}>
+                  <m.div key={i} variants={gridChild}>
                     <AdCard ad={ad} creatives={result.creatives.filter((c) => c.index === i)} critique={eff?.ads[i]} onDownload={downloadPng} onVariant={requestVariant} />
-                  </motion.div>
+                  </m.div>
                 ))}
-              </motion.div>
+              </m.div>
             </section>
 
             <section>
@@ -607,8 +647,27 @@ export default function Home() {
                 </CardContent></Card>
               )}
             </section>
-          </motion.div>
+          </m.div>
         )}
+
+        {/* Über dieses System — macht die System-Denke sichtbar */}
+        <Reveal className="mt-16">
+          <SectionTitle icon={<Info className="h-4 w-4" />}>Über dieses System</SectionTitle>
+          <div className="grid sm:grid-cols-3 gap-3">
+            <Card className="transition-colors duration-300 hover:border-primary/30"><CardContent className="pt-5">
+              <p className="text-sm font-medium flex items-center gap-1.5"><RotateCcw className="h-3.5 w-3.5 text-primary" /> Wiederverwendbar</p>
+              <p className="text-xs text-muted-foreground mt-1.5">Neues Webinar = nur <code className="text-foreground">inputs/webinar.json</code> tauschen. Gleiches System, neuer Output.</p>
+            </CardContent></Card>
+            <Card className="transition-colors duration-300 hover:border-primary/30"><CardContent className="pt-5">
+              <p className="text-sm font-medium flex items-center gap-1.5"><Palette className="h-3.5 w-3.5 text-primary" /> Input ↔ Logik getrennt</p>
+              <p className="text-xs text-muted-foreground mt-1.5">Marken-DNA (Farben, Ton, Copy-Regeln) liegt separat in <code className="text-foreground">brand/brand.json</code> — oder wird aus Beispielen gelernt.</p>
+            </CardContent></Card>
+            <Card className="transition-colors duration-300 hover:border-primary/30"><CardContent className="pt-5">
+              <p className="text-sm font-medium flex items-center gap-1.5"><Check className="h-3.5 w-3.5 text-primary" /> Robust &amp; geprüft</p>
+              <p className="text-xs text-muted-foreground mt-1.5">LLM-Output per Schema = garantiert valides JSON, mit Zod geprüft, Modell-Fallback gegen Quota — plus KI-Qualitäts-Loop.</p>
+            </CardContent></Card>
+          </div>
+        </Reveal>
 
         {/* Footer */}
         <footer className="mt-16 border-t border-border pt-6 flex items-center justify-between gap-3 flex-wrap text-xs text-muted-foreground">
@@ -618,6 +677,48 @@ export default function Home() {
           </a>
         </footer>
       </div>
+
+      {/* Sticky Aktionsleiste — Hauptaktion immer erreichbar */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+        <div className="mx-auto max-w-5xl px-5 h-14 flex items-center gap-3">
+          <div className="hidden sm:flex items-center gap-2 flex-1 min-w-0">
+            <Progress value={progress} className="h-1.5 w-40" />
+            <span className="text-xs text-muted-foreground truncate">{statusLabel}</span>
+          </div>
+          <span className="text-xs text-muted-foreground truncate flex-1 sm:hidden">{statusLabel}</span>
+          {result && <Button variant="outline" size="sm" onClick={downloadZip}><Download className="h-4 w-4" /><span className="hidden sm:inline">ZIP</span></Button>}
+          <Button size="sm" onClick={generate} disabled={loading || !requiredOk}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Generieren
+          </Button>
+        </div>
+      </div>
+
+      {/* Befehlspalette (⌘/Ctrl+K) */}
+      <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen} title="Befehle" description="Schnellzugriff auf alle Aktionen">
+        <CommandInput placeholder="Befehl suchen … (Generieren, Marke, Plan, Theme …)" />
+        <CommandList>
+          <CommandEmpty>Kein Befehl gefunden.</CommandEmpty>
+          <CommandGroup heading="Aktionen">
+            <CommandItem disabled={!requiredOk || loading} onSelect={() => runCmd(() => genRef.current())}><Sparkles /> Assets generieren <CommandShortcut>⌘↵</CommandShortcut></CommandItem>
+            <CommandItem onSelect={() => runCmd(learnBrand)}><Palette /> Marke aus Beispielen lernen</CommandItem>
+            <CommandItem onSelect={() => runCmd(analyzeAngles)}><Gauge /> Angle-Lab: Angles bewerten</CommandItem>
+            {result && <CommandItem onSelect={() => runCmd(createPlan)}><Calendar /> Posting-Plan erstellen</CommandItem>}
+            {result && <CommandItem onSelect={() => runCmd(downloadZip)}><Download /> Zyklus als ZIP herunterladen</CommandItem>}
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Webinar">
+            <CommandItem onSelect={() => runCmd(() => setWebinar(structuredClone(defaultWebinar) as unknown as Webinar))}><FilePlus2 /> Beispiel-Webinar laden</CommandItem>
+            <CommandItem onSelect={() => runCmd(() => setWebinar(EMPTY_WEBINAR))}><Eraser /> Formular leeren</CommandItem>
+          </CommandGroup>
+          <CommandSeparator />
+          <CommandGroup heading="Ansicht">
+            <CommandItem onSelect={() => runCmd(startTour)}><HelpCircle /> Tour starten</CommandItem>
+            <CommandItem onSelect={() => runCmd(() => setTheme("light"))}><Sun /> Heller Modus</CommandItem>
+            <CommandItem onSelect={() => runCmd(() => setTheme("dark"))}><Moon /> Dunkler Modus</CommandItem>
+            <CommandItem onSelect={() => runCmd(logout)}><LogOut /> Abmelden</CommandItem>
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
     </main>
   );
 }
@@ -630,20 +731,20 @@ function dataUriToBlob(uri: string): Blob {
   return new Blob([arr], { type: mime });
 }
 
-function StepCard({ n, icon, title, desc, children, id }: { n: number; icon: React.ReactNode; title: string; desc: string; children: React.ReactNode; id?: string }) {
+function StepCard({ n, icon, title, desc, children, id, done }: { n: number; icon: React.ReactNode; title: string; desc: string; children: React.ReactNode; id?: string; done?: boolean }) {
   return (
-    <motion.div className="mt-4" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
+    <m.div className="mt-4" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
       <Card id={id} className="transition-colors duration-300 hover:border-primary/30">
         <CardHeader>
           <div className="flex items-center gap-2.5">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">{n}</span>
+            <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold transition-colors ${done ? "bg-green-600 text-white" : "bg-primary text-primary-foreground"}`}>{done ? <Check className="h-3.5 w-3.5" /> : n}</span>
             <CardTitle className="text-base flex items-center gap-1.5">{icon} {title}</CardTitle>
           </div>
           <CardDescription>{desc}</CardDescription>
         </CardHeader>
         <CardContent>{children}</CardContent>
       </Card>
-    </motion.div>
+    </m.div>
   );
 }
 function SectionTitle({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
@@ -690,12 +791,12 @@ function AdCard({ ad, creatives, critique, onDownload, onVariant }: { ad: AdCopy
       </div>
       <Tabs value={fmt} onValueChange={setFmt} className="mb-3"><TabsList>{activeCreatives.map((c) => <TabsTrigger key={c.formatKey} value={c.formatKey}>{c.formatLabel}</TabsTrigger>)}</TabsList></Tabs>
       <AnimatePresence mode="wait">
-        <motion.div key={`${feedView}-${side}-${current.dataUri}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+        <m.div key={`${feedView}-${side}-${current.dataUri}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
           {feedView
             ? <FeedMockup img={current.dataUri} caption={activeAd.hook} />
             /* eslint-disable-next-line @next/next/no-img-element */
             : <img src={current.dataUri} alt={activeAd.headline} className="w-full rounded-lg border border-border block" />}
-        </motion.div>
+        </m.div>
       </AnimatePresence>
       <div className="flex items-center justify-between gap-2 mt-3 mb-2">
         <div className="flex items-center gap-2"><span className="text-[11px] text-primary font-semibold uppercase">{activeAd.variant} · {activeAd.angleId}{variant ? ` · ${side}` : ""}</span>{side === "A" && critique && <ScoreBadge score={critique.score} />}</div>

@@ -20,6 +20,6 @@ export function proxy(req: NextRequest) {
 }
 
 export const config = {
-  // Alles außer /login, /api/auth und statische Assets.
-  matcher: ["/((?!login|api/auth|_next/static|_next/image|favicon.ico).*)"],
+  // Alles außer /login, /api/auth, statische Assets und öffentlichem Favicon/OG-Bild.
+  matcher: ["/((?!login|api/auth|_next/static|_next/image|favicon.ico|icon|opengraph-image).*)"],
 };

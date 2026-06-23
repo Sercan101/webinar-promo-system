@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "motion/react";
+import { m } from "motion/react";
 import type { ReactNode } from "react";
 
 /** Blendet Inhalt sanft von unten ein, sobald er ins Bild scrollt (einmalig). */
@@ -16,7 +16,7 @@ export function Reveal({
   y?: number;
 }) {
   return (
-    <motion.div
+    <m.div
       className={className}
       initial={{ opacity: 0, y }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -24,7 +24,7 @@ export function Reveal({
       transition={{ duration: 0.45, delay, ease: [0.22, 1, 0.36, 1] }}
     >
       {children}
-    </motion.div>
+    </m.div>
   );
 }
 
