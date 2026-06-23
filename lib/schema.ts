@@ -257,7 +257,7 @@ export const zLearnedBrand = z.object({
     text: hex, textMuted: hex, line: hex, check: hex,
   }),
   voiceTone: z.string().min(1),
-  voicePrinciples: z.array(z.string().min(1)).min(2),
+  voicePrinciples: z.array(z.string().min(1)).min(1),
   adHookPattern: z.string().min(1),
   adBulletsLabel: z.string().min(1),
   adCtaOptions: z.array(z.string().min(1)).min(1),
@@ -265,7 +265,7 @@ export const zLearnedBrand = z.object({
   emailFromRole: z.string().min(1),
   emailGreeting: z.string().min(1),
   emailCtaText: z.string().min(1),
-  emailStructure: z.array(z.string().min(1)).min(2),
+  emailStructure: z.array(z.string().min(1)).min(1),
 });
 
 // Posting-Plan: KI plant die Sequenz; konkrete Daten rechnet der Server.
