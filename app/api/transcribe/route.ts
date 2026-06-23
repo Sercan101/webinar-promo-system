@@ -17,8 +17,7 @@ export async function POST(req: Request) {
     const dataUri: string = body?.dataUri ?? "";
     const m = dataUri.match(/^data:([^;]+);base64,(.+)$/);
     if (!m) return NextResponse.json({ error: "Keine gültige Audio-/Video-Datei." }, { status: 400 });
-    const mimeType = m[1];
-    const data = m[2];
+    const media = [{ data: m[2], mimeType: m[1] }];
 
     const system = "Du extrahierst aus einer Webinar-Aufnahme präzise, strukturierte Felder für ein Promo-System. Deutsch, du-Ansprache.";
     const prompt = `Hier ist die Aufnahme (Audio/Video) eines Webinars. Verstehe den Inhalt und extrahiere die Felder.
@@ -31,7 +30,7 @@ Antworte ausschließlich im vorgegebenen JSON-Schema.`;
 
     const text = await geminiJson({
       apiKey: process.env.GEMINI_API_KEY, models: MODELS, system, prompt,
-      schema: webinarExtractJsonSchema, media: [{ data, mimeType }], temperature: 0.4,
+      schema: webinarExtractJsonSchema, media, temperature: 0.4,
     });
     const raw = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "");
     const w = zWebinarExtract.parse(JSON.parse(raw));

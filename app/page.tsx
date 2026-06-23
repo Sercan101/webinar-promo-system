@@ -189,6 +189,12 @@ export default function Home() {
     setSelectedAngleIds((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : (cur.length < 3 ? [...cur, id] : cur));
   }
   async function transcribeMedia(file: File) {
+    // Inline-Limit (Vercel-Body ~4,5 MB, base64 +33%). Größere Dateien vorab komprimieren/zuschneiden.
+    const INLINE_MAX = 3.5 * 1024 * 1024;
+    if (file.size > INLINE_MAX) {
+      toast.error(`Datei ${(file.size / 1024 / 1024).toFixed(1)} MB — bitte auf ≤ 3,5 MB komprimieren/zuschneiden (Hinweis unten).`);
+      return;
+    }
     setTranscribing(true);
     try {
       const dataUri = await readFileAsDataUri(file);
@@ -386,11 +392,13 @@ export default function Home() {
               <Button variant="outline" size="sm" onClick={() => extractWebinar("url")} disabled={importing || !importValue.trim()}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} Extrahieren → füllt Formular</Button>
             </TabsContent>
             <TabsContent value="audio" className="mt-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Lade eine Audio-/Video-Datei des Webinars hoch — Gemini hört zu und füllt das Formular automatisch. <span className="text-foreground">Max. ~4 MB</span> (für lange Webinare ein komprimiertes Audio oder einen Ausschnitt).</p>
+              <p className="text-sm text-muted-foreground">Lade eine komprimierte <span className="text-foreground">Audio-Datei</span> des Webinars hoch (bis ~3,5 MB) — Gemini hört zu und füllt das Formular automatisch.</p>
               <input type="file" accept="audio/*,video/*" disabled={transcribing}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) transcribeMedia(f); }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) transcribeMedia(f); e.target.value = ""; }}
                 className="block text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-transparent file:px-3 file:py-1.5 file:text-sm file:text-foreground" />
-              {transcribing && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Höre zu & extrahiere … (kann etwas dauern)</p>}
+              {transcribing
+                ? <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Höre zu &amp; extrahiere … (kann etwas dauern)</p>
+                : <p className="text-[11px] text-muted-foreground leading-relaxed">Langes Webinar oder Video? Audiospur vorab extrahieren &amp; komprimieren:<br /><code className="text-foreground">ffmpeg -i webinar.mp4 -t 1500 -vn -ac 1 -ar 16000 -b:a 16k audio.mp3</code><br />→ erste 25 Min mono ≈ 3 MB (enthält meist den ganzen Pitch). Für längere Transkripte: Tab „Aus Transkript".</p>}
             </TabsContent>
             <TabsContent value="json" className="mt-4">
               <p className="text-sm text-muted-foreground mb-2">Nur-Ansicht (bearbeiten über das Formular).</p>
