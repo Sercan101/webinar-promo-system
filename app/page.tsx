@@ -7,11 +7,14 @@ import { toast } from "sonner";
 import {
   Sparkles, FileText, Wand2, Calendar, Send, Download, History as HistoryIcon,
   LogOut, Loader2, Palette, MessageSquare, Webhook, RotateCcw, Trash2, ChevronRight, Paintbrush, Info, HelpCircle, Copy, FilePlus2, Eraser,
-  ThumbsUp, MessageCircle, Share2, Gauge, ListChecks,
+  ThumbsUp, MessageCircle, Share2, Gauge, ListChecks, Code2, Rocket,
 } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { driver } from "driver.js";
 import "driver.js/dist/driver.css";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Reveal, gridParent, gridChild } from "@/components/reveal";
+import { Skeleton } from "@/components/ui/skeleton";
 import { readFileAsDataUri } from "@/lib/file";
 import defaultWebinar from "@/inputs/webinar.json";
 import {
@@ -255,12 +258,14 @@ export default function Home() {
   const progress = plan ? 100 : result ? 70 : 35;
 
   return (
-    <main className="min-h-screen">
+    <main className="relative min-h-screen">
+      {/* dekorativer Verlauf hinter dem Hero */}
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[440px] bg-gradient-to-b from-primary/10 via-primary/[0.035] to-transparent" />
       <div className="mx-auto max-w-5xl px-5 py-8 pb-24">
         {/* Header */}
-        <header className="flex items-center justify-between gap-3 flex-wrap">
+        <motion.header initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2.5">
-            <span className="h-5 w-5 rounded bg-primary" />
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/55 shadow-sm"><Sparkles className="h-4 w-4 text-primary-foreground" /></span>
             <h1 className="text-lg font-bold">Webinar-Promo-System</h1>
             <Badge variant="outline" className="text-muted-foreground">Scaling Champions</Badge>
           </div>
@@ -269,7 +274,13 @@ export default function Home() {
             <ThemeToggle />
             <Button variant="ghost" size="sm" onClick={logout}><LogOut className="h-4 w-4" /> Abmelden</Button>
           </div>
-        </header>
+        </motion.header>
+
+        {/* Hero-Claim */}
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.08 }} className="mt-9">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-balance">Webinar rein → fertige Promo-Assets raus.</h2>
+          <p className="text-muted-foreground mt-2 max-w-2xl">Angles, markenkonforme Anzeigen (Bild&nbsp;+&nbsp;Text), E-Mail-Einladung, Qualitäts-Check und Posting-Plan — in einem geführten Durchlauf.</p>
+        </motion.div>
 
         {/* So funktioniert's */}
         <Card className="mt-5 bg-muted/30">
@@ -354,14 +365,22 @@ export default function Home() {
 
         {/* Step 3 — Design */}
         <StepCard id="step-design" n={3} icon={<Paintbrush className="h-4 w-4" />} title="Design" desc="Wähle Vorlage, Akzentfarbe und Schrift, lade optional Logo / Hintergrund hoch — die Vorschau rechts aktualisiert sich sofort.">
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6 items-start">
             <DesignEditor design={design} onChange={setDesign} />
-            <div className="space-y-2">
+            <div className="space-y-2 md:sticky md:top-6">
               <p className="text-xs uppercase tracking-widest text-muted-foreground flex items-center gap-1.5">Live-Vorschau {previewing && <Loader2 className="h-3 w-3 animate-spin" />}</p>
-              {preview
-                /* eslint-disable-next-line @next/next/no-img-element */
-                ? <img src={preview} alt="Vorschau" className="w-full rounded-lg border border-border" />
-                : <div className="aspect-[4/5] rounded-lg border border-dashed border-border flex items-center justify-center text-xs text-muted-foreground">Vorschau erscheint hier …</div>}
+              <AnimatePresence mode="wait">
+                {preview ? (
+                  <motion.img key={preview} src={preview} alt="Vorschau"
+                    initial={{ opacity: 0, scale: 0.985 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
+                    transition={{ duration: 0.35 }}
+                    className="w-full rounded-lg border border-border" />
+                ) : (
+                  <motion.div key="ph" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="aspect-[4/5] rounded-lg overflow-hidden border border-border">
+                    <Skeleton className="h-full w-full" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <p className="text-[11px] text-muted-foreground">Beispiel mit dem aktuellen Titel & Design — die echten Anzeigen entstehen in Schritt 4.</p>
             </div>
           </div>
@@ -407,6 +426,36 @@ export default function Home() {
           </div>
         </StepCard>
 
+        {/* Leerzustand: zeigt, wo der Output landet */}
+        {!result && !loading && (
+          <Reveal className="mt-10">
+            <div className="rounded-xl border border-dashed border-border bg-muted/20 py-10 px-6 text-center">
+              <Rocket className="h-6 w-6 text-primary mx-auto mb-2" />
+              <p className="text-sm font-medium">Deine fertigen Assets erscheinen hier</p>
+              <p className="text-xs text-muted-foreground mt-1">Angles · 3 Anzeigen × 3 Formate · E-Mail · Qualitäts-Check · Posting-Plan</p>
+            </div>
+          </Reveal>
+        )}
+
+        {/* Lade-Skelett während des Generierens */}
+        <AnimatePresence>
+          {loading && (
+            <motion.div key="gen-skel" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-12">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4"><Loader2 className="h-4 w-4 animate-spin" /> Generiere Angles, Anzeigen, E-Mail &amp; Qualitäts-Check …</div>
+              <div className="grid gap-5 md:grid-cols-3">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="rounded-xl border border-border p-4 space-y-3">
+                    <Skeleton className="aspect-[4/5] w-full rounded-lg" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-full" />
+                    <Skeleton className="h-3 w-5/6" />
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* History */}
         {history.length > 0 && (
           <section className="mt-8">
@@ -432,7 +481,14 @@ export default function Home() {
 
         {/* Results */}
         {result && (
-          <div className="mt-12 space-y-12">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="mt-14 space-y-12">
+            <Reveal>
+              <div className="flex items-center gap-3">
+                <Separator className="flex-1" />
+                <span className="text-xs uppercase tracking-widest text-muted-foreground font-medium whitespace-nowrap">Fertige Assets</span>
+                <Separator className="flex-1" />
+              </div>
+            </Reveal>
             {eff && (
               <section>
                 <SectionTitle>Qualitäts-Check (Self-Critique)</SectionTitle>
@@ -452,21 +508,27 @@ export default function Home() {
 
             <section>
               <SectionTitle>Angles</SectionTitle>
-              <div className="grid gap-4 md:grid-cols-3">
+              <motion.div variants={gridParent} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid gap-4 md:grid-cols-3">
                 {result.bundle.angles.map((a) => (
-                  <Card key={a.id}>
-                    <CardHeader><p className="text-xs text-primary font-semibold">{a.id}</p><CardTitle className="text-base">{a.name}</CardTitle></CardHeader>
-                    <CardContent className="text-sm text-muted-foreground space-y-1.5"><p><span className="text-foreground font-medium">Pain:</span> {a.painAddressed}</p><p>{a.bigIdea}</p></CardContent>
-                  </Card>
+                  <motion.div key={a.id} variants={gridChild}>
+                    <Card className="h-full transition-colors duration-300 hover:border-primary/30">
+                      <CardHeader><p className="text-xs text-primary font-semibold">{a.id}</p><CardTitle className="text-base">{a.name}</CardTitle></CardHeader>
+                      <CardContent className="text-sm text-muted-foreground space-y-1.5"><p><span className="text-foreground font-medium">Pain:</span> {a.painAddressed}</p><p>{a.bigIdea}</p></CardContent>
+                    </Card>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </section>
 
             <section>
               <SectionTitle>Anzeigen (Bild + Text) · 3 Formate je Anzeige</SectionTitle>
-              <div className="grid gap-5 md:grid-cols-3">
-                {result.bundle.ads.map((ad, i) => (<AdCard key={i} ad={ad} creatives={result.creatives.filter((c) => c.index === i)} critique={eff?.ads[i]} onDownload={downloadPng} onVariant={requestVariant} />))}
-              </div>
+              <motion.div variants={gridParent} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid gap-5 md:grid-cols-3">
+                {result.bundle.ads.map((ad, i) => (
+                  <motion.div key={i} variants={gridChild}>
+                    <AdCard ad={ad} creatives={result.creatives.filter((c) => c.index === i)} critique={eff?.ads[i]} onDownload={downloadPng} onVariant={requestVariant} />
+                  </motion.div>
+                ))}
+              </motion.div>
             </section>
 
             <section>
@@ -545,8 +607,16 @@ export default function Home() {
                 </CardContent></Card>
               )}
             </section>
-          </div>
+          </motion.div>
         )}
+
+        {/* Footer */}
+        <footer className="mt-16 border-t border-border pt-6 flex items-center justify-between gap-3 flex-wrap text-xs text-muted-foreground">
+          <span>Webinar-Promo-System · wiederverwendbar — neues Webinar = neuer Input</span>
+          <a href="https://github.com/Sercan101/webinar-promo-system" target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors">
+            <Code2 className="h-3.5 w-3.5" /> Quellcode &amp; Doku
+          </a>
+        </footer>
       </div>
     </main>
   );
@@ -562,16 +632,18 @@ function dataUriToBlob(uri: string): Blob {
 
 function StepCard({ n, icon, title, desc, children, id }: { n: number; icon: React.ReactNode; title: string; desc: string; children: React.ReactNode; id?: string }) {
   return (
-    <Card className="mt-4" id={id}>
-      <CardHeader>
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">{n}</span>
-          <CardTitle className="text-base flex items-center gap-1.5">{icon} {title}</CardTitle>
-        </div>
-        <CardDescription>{desc}</CardDescription>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
+    <motion.div className="mt-4" initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-60px" }} transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}>
+      <Card id={id} className="transition-colors duration-300 hover:border-primary/30">
+        <CardHeader>
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">{n}</span>
+            <CardTitle className="text-base flex items-center gap-1.5">{icon} {title}</CardTitle>
+          </div>
+          <CardDescription>{desc}</CardDescription>
+        </CardHeader>
+        <CardContent>{children}</CardContent>
+      </Card>
+    </motion.div>
   );
 }
 function SectionTitle({ children, icon }: { children: React.ReactNode; icon?: React.ReactNode }) {
@@ -601,7 +673,7 @@ function AdCard({ ad, creatives, critique, onDownload, onVariant }: { ad: AdCopy
   }
 
   return (
-    <Card><CardContent className="pt-6">
+    <Card className="h-full transition-colors duration-300 hover:border-primary/30"><CardContent className="pt-6">
       <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
         {variant ? (
           <div className="flex gap-0.5 rounded-md border border-border p-0.5">
@@ -617,10 +689,14 @@ function AdCard({ ad, creatives, critique, onDownload, onVariant }: { ad: AdCopy
         </div>
       </div>
       <Tabs value={fmt} onValueChange={setFmt} className="mb-3"><TabsList>{activeCreatives.map((c) => <TabsTrigger key={c.formatKey} value={c.formatKey}>{c.formatLabel}</TabsTrigger>)}</TabsList></Tabs>
-      {feedView
-        ? <FeedMockup img={current.dataUri} caption={activeAd.hook} />
-        /* eslint-disable-next-line @next/next/no-img-element */
-        : <img src={current.dataUri} alt={activeAd.headline} className="w-full rounded-lg border border-border block" />}
+      <AnimatePresence mode="wait">
+        <motion.div key={`${feedView}-${side}-${current.dataUri}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
+          {feedView
+            ? <FeedMockup img={current.dataUri} caption={activeAd.hook} />
+            /* eslint-disable-next-line @next/next/no-img-element */
+            : <img src={current.dataUri} alt={activeAd.headline} className="w-full rounded-lg border border-border block" />}
+        </motion.div>
+      </AnimatePresence>
       <div className="flex items-center justify-between gap-2 mt-3 mb-2">
         <div className="flex items-center gap-2"><span className="text-[11px] text-primary font-semibold uppercase">{activeAd.variant} · {activeAd.angleId}{variant ? ` · ${side}` : ""}</span>{side === "A" && critique && <ScoreBadge score={critique.score} />}</div>
         <div className="flex items-center gap-1">
