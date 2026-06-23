@@ -259,7 +259,7 @@ export default function Home() {
     const ads = root.folder("02_Ad-Copies")!; bundle.ads.forEach((ad, i) => ads.file(`anzeige-${i + 1}-${ad.variant}.md`, adToMarkdown(ad, i))); ads.file("ads.json", JSON.stringify(bundle.ads, null, 2));
     const cre = root.folder("03_Creatives")!; for (const c of creatives) { const buf = await (await fetch(c.dataUri)).arrayBuffer(); cre.folder(`anzeige-${c.index + 1}-${c.variant}`)!.file(`${c.formatKey}.png`, buf); }
     const mail = root.folder("04_Mailing")!; mail.file("einladung.md", emailToMarkdown(bundle.email)); mail.file("einladung.html", emailToHtml(bundle.email, "#E11D2A")); mail.file("einladung.json", JSON.stringify(bundle.email, null, 2));
-    root.folder("05_System-Doku")!.file("bundle.json", JSON.stringify(bundle, null, 2));
+    root.folder("05_System-Export-oder-Doku")!.file("bundle.json", JSON.stringify(bundle, null, 2));
     if (plan) { const p = root.folder("06_Posting-Plan")!; p.file("posting-plan.md", planToMarkdown(plan, w)); p.file("posting-plan.csv", planToCsv(plan)); p.file("posting-plan.ics", planToIcs(plan)); }
     download(`Zyklus_${bundle.cycleSlug}.zip`, await zip.generateAsync({ type: "blob" }), "application/zip");
   }

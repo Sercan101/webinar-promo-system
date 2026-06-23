@@ -1,6 +1,6 @@
 // Erzeugt einen kompletten Promo-Zyklus für das in inputs/webinar.json definierte Webinar
 // und legt ihn in der vorgegebenen Ordnerstruktur ab:
-//   /Zyklus_<webinar>/01_Angles 02_Ad-Copies 03_Creatives 04_Mailing 05_System-Doku
+//   /Zyklus_<webinar>/01_Angles 02_Ad-Copies 03_Creatives 04_Mailing 05_System-Export-oder-Doku
 //
 // Wiederverwendbar: nur inputs/webinar.json tauschen, dann `npm run generate`.
 import fs from "node:fs";
@@ -44,7 +44,7 @@ async function main() {
     ads: path.join(cycleDir, "02_Ad-Copies"),
     creatives: path.join(cycleDir, "03_Creatives"),
     mailing: path.join(cycleDir, "04_Mailing"),
-    doku: path.join(cycleDir, "05_System-Doku"),
+    doku: path.join(cycleDir, "05_System-Export-oder-Doku"),
   };
   // Frischer Zyklus-Ordner
   fs.rmSync(cycleDir, { recursive: true, force: true });
@@ -74,7 +74,7 @@ async function main() {
   fs.writeFileSync(path.join(dirs.mailing, "einladung.html"), emailToHtml(bundle.email, brand.palette.accent));
   fs.writeFileSync(path.join(dirs.mailing, "einladung.json"), JSON.stringify(bundle.email, null, 2));
 
-  // 05_System-Doku
+  // 05_System-Export-oder-Doku
   if (bundle.qa) {
     fs.writeFileSync(path.join(dirs.doku, "qualitaets-report.md"), qaToMarkdown(bundle.qa));
   }
@@ -92,7 +92,7 @@ async function main() {
       "- `02_Ad-Copies/` — 3 Anzeigentexte (md) + ads.json",
       "- `03_Creatives/` — 3 gerenderte Anzeigen-Bilder (PNG, 1080×1350)",
       "- `04_Mailing/` — E-Mail-Einladung als md, html und json",
-      "- `05_System-Doku/` — dieser Bundle-Export + verwendeter Webinar-Input",
+      "- `05_System-Export-oder-Doku/` — dieser Bundle-Export + verwendeter Webinar-Input",
       "",
       "## Wiederverwenden",
       "`inputs/webinar.json` ersetzen → `npm run generate` → neuer Zyklus, gleicher Output-Satz.",
