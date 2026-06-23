@@ -31,7 +31,8 @@ Ein geführter 4-Schritt-Wizard mit Schritt-Validierung, Befehlspalette (⌘K), 
 
 | | Feature |
 |---|---|
-| 📥 | **Webinar rein, flexibel** — als Formular, aus Transkript, aus Landingpage-URL oder **aus einer Audio-/Video-Aufnahme** (Gemini hört zu) |
+| 📥 | **Webinar rein, flexibel** — als Formular, **aus PDF-Briefing** (Text oder per Vision/OCR), aus Transkript, aus Landingpage-URL oder **aus einer Audio-/Video-Aufnahme** (Gemini hört zu) |
+| 🗜️ | **Uploads werden clientseitig komprimiert** — Bilder verkleinert, Audio/Video auf mono/16 kHz gerechnet & bei Bedarf gekürzt (passt unter API-Limits, spart Quota) |
 | 🎨 | **Marke lernen** — leitet das Brand-Kit (Farben, Ton, Copy-Regeln) per Vision aus echten Beispiel-Anzeigen ab |
 | 🎯 | **Angle-Lab** — leitet mehrere Angles ab und bewertet jede nach vorhergesagter „Ziehkraft" (0–10); du wählst die stärksten |
 | 🖼️ | **Design-Engine** — 3 Vorlagen, eigene Akzentfarbe, eigene Schrift, eigenes Logo & Hintergrundbild — als PNG gerendert (Satori), mit **Live-Vorschau** |

@@ -13,10 +13,11 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const text: string | undefined = body?.text;
     const url: string | undefined = body?.url;
-    if (!text?.trim() && !url?.trim()) {
-      return NextResponse.json({ error: "Bitte Transkript-Text oder URL angeben." }, { status: 400 });
+    const images: { data: string; mimeType: string }[] | undefined = body?.images;
+    if (!text?.trim() && !url?.trim() && !images?.length) {
+      return NextResponse.json({ error: "Bitte Transkript-Text, URL oder PDF angeben." }, { status: 400 });
     }
-    const webinar = await extractWebinar(process.env.GEMINI_API_KEY, { text, url });
+    const webinar = await extractWebinar(process.env.GEMINI_API_KEY, { text, url, images });
     return NextResponse.json({ webinar });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

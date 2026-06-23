@@ -189,20 +189,52 @@ export default function Home() {
     setSelectedAngleIds((cur) => cur.includes(id) ? cur.filter((x) => x !== id) : (cur.length < 3 ? [...cur, id] : cur));
   }
   async function transcribeMedia(file: File) {
-    // Inline-Limit (Vercel-Body ~4,5 MB, base64 +33%). Größere Dateien vorab komprimieren/zuschneiden.
+    const CAN_DECODE_MAX = 150 * 1024 * 1024; // im Browser dekodierbar
     const INLINE_MAX = 3.5 * 1024 * 1024;
-    if (file.size > INLINE_MAX) {
-      toast.error(`Datei ${(file.size / 1024 / 1024).toFixed(1)} MB — bitte auf ≤ 3,5 MB komprimieren/zuschneiden (Hinweis unten).`);
+    const isAV = file.type.startsWith("audio/") || file.type.startsWith("video/");
+    if (isAV && file.size > CAN_DECODE_MAX) {
+      toast.error(`Datei ${(file.size / 1024 / 1024).toFixed(0)} MB — zu groß für die Browser-Komprimierung. Bitte vorab die Audiospur extrahieren (Hinweis unten).`);
       return;
     }
     setTranscribing(true);
     try {
-      const dataUri = await readFileAsDataUri(file);
+      let toSend = file;
+      if (isAV) {
+        // Audio/Video im Browser komprimieren (mono, 16 kHz, ggf. gekürzt) → passt inline.
+        const { compressAudio } = await import("@/lib/audio");
+        const c = await compressAudio(file);
+        toSend = c.file;
+        if (c.trimmed) toast.message(`Lange Aufnahme — es werden die ersten ${Math.round(c.usedSeconds / 60)} Min genutzt (enthält meist den ganzen Pitch).`);
+      } else if (file.size > INLINE_MAX) {
+        toast.error(`Datei zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB).`); return;
+      }
+      const dataUri = await readFileAsDataUri(toSend);
       const res = await fetch("/api/transcribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dataUri }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Transkription fehlgeschlagen");
       setWebinar(data.webinar as Webinar); setTab("formular"); toast.success("Aus Aufnahme extrahiert → Formular gefüllt 🎙️");
     } catch (e) { fail(e); } finally { setTranscribing(false); }
+  }
+
+  async function extractFromPdf(file: File) {
+    setImporting(true);
+    try {
+      const { extractPdfText, renderPdfToImages } = await import("@/lib/pdf");
+      let payload: Record<string, unknown>;
+      const text = await extractPdfText(file).catch(() => "");
+      if (text && text.length >= 80) {
+        payload = { text }; // PDF mit Text-Ebene → günstig & schnell
+      } else {
+        // Keine (zuverlässige) Text-Ebene → Seiten als Bilder an Gemini-Vision (OCR).
+        const images = await renderPdfToImages(file);
+        if (!images.length) throw new Error("PDF konnte nicht gelesen werden.");
+        payload = { images };
+      }
+      const res = await fetch("/api/extract-webinar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Extraktion fehlgeschlagen");
+      setWebinar(data.webinar as Webinar); setTab("formular"); toast.success("Aus PDF extrahiert → Formular gefüllt 📄");
+    } catch (e) { fail(e); } finally { setImporting(false); }
   }
 
   async function generate() {
@@ -373,14 +405,22 @@ export default function Home() {
             <Button variant="ghost" size="sm" onClick={() => setWebinar(EMPTY_WEBINAR)}><Eraser className="h-3.5 w-3.5" /> Leeren</Button>
           </div>
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
+            <TabsList className="flex-wrap h-auto">
               <TabsTrigger value="formular">Formular</TabsTrigger>
+              <TabsTrigger value="pdf">Aus PDF</TabsTrigger>
               <TabsTrigger value="transkript">Aus Transkript</TabsTrigger>
               <TabsTrigger value="url">Aus URL</TabsTrigger>
               <TabsTrigger value="audio">Aus Audio/Video</TabsTrigger>
               <TabsTrigger value="json">JSON-Ansicht</TabsTrigger>
             </TabsList>
             <TabsContent value="formular" className="mt-4"><WebinarForm webinar={webinar} onChange={setWebinar} /></TabsContent>
+            <TabsContent value="pdf" className="mt-4 space-y-3">
+              <p className="text-sm text-muted-foreground">Lade ein <span className="text-foreground">Briefing als PDF</span> hoch — der Text wird im Browser ausgelesen, die Felder werden automatisch extrahiert. Ideal für die Client-Briefings von Scaling Champions.</p>
+              <input type="file" accept="application/pdf,.pdf" disabled={importing}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) extractFromPdf(f); e.target.value = ""; }}
+                className="block text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-transparent file:px-3 file:py-1.5 file:text-sm file:text-foreground" />
+              {importing && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Lese PDF &amp; extrahiere …</p>}
+            </TabsContent>
             <TabsContent value="transkript" className="mt-4 space-y-3">
               <p className="text-sm text-muted-foreground">Fügt das Transkript/Briefing ein — die KI füllt das Formular automatisch.</p>
               <Textarea value={importValue} onChange={(e) => setImportValue(e.target.value)} placeholder="Transkript, Briefing oder Notizen einfügen …" className="min-h-32" />
@@ -392,13 +432,13 @@ export default function Home() {
               <Button variant="outline" size="sm" onClick={() => extractWebinar("url")} disabled={importing || !importValue.trim()}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} Extrahieren → füllt Formular</Button>
             </TabsContent>
             <TabsContent value="audio" className="mt-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Lade eine komprimierte <span className="text-foreground">Audio-Datei</span> des Webinars hoch (bis ~3,5 MB) — Gemini hört zu und füllt das Formular automatisch.</p>
+              <p className="text-sm text-muted-foreground">Lade eine <span className="text-foreground">Audio- oder Video-Datei</span> hoch (bis 150 MB) — sie wird im Browser automatisch komprimiert (mono, 16 kHz) und bei Bedarf auf die ersten Minuten gekürzt, damit sie passt. Gemini hört zu und füllt das Formular.</p>
               <input type="file" accept="audio/*,video/*" disabled={transcribing}
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) transcribeMedia(f); e.target.value = ""; }}
                 className="block text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-transparent file:px-3 file:py-1.5 file:text-sm file:text-foreground" />
               {transcribing
-                ? <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Höre zu &amp; extrahiere … (kann etwas dauern)</p>
-                : <p className="text-[11px] text-muted-foreground leading-relaxed">Langes Webinar oder Video? Audiospur vorab extrahieren &amp; komprimieren:<br /><code className="text-foreground">ffmpeg -i webinar.mp4 -t 1500 -vn -ac 1 -ar 16000 -b:a 16k audio.mp3</code><br />→ erste 25 Min mono ≈ 3 MB (enthält meist den ganzen Pitch). Für längere Transkripte: Tab „Aus Transkript".</p>}
+                ? <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Komprimiere &amp; extrahiere … (kann etwas dauern)</p>
+                : <p className="text-[11px] text-muted-foreground leading-relaxed">Mehrstündiges Webinar oder Datei &gt; 150 MB? Vorab die Audiospur extrahieren:<br /><code className="text-foreground">ffmpeg -i webinar.mp4 -vn -ac 1 -ar 16000 -b:a 48k audio.mp3</code></p>}
             </TabsContent>
             <TabsContent value="json" className="mt-4">
               <p className="text-sm text-muted-foreground mb-2">Nur-Ansicht (bearbeiten über das Formular).</p>

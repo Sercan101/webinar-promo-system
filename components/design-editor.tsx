@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { Upload, Check } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { readFileAsDataUri } from "@/lib/file";
+import { compressImage } from "@/lib/file";
 import type { CreativeDesign, CreativeTemplate } from "@/lib/types";
 
 const TEMPLATES: { key: CreativeTemplate; label: string; desc: string }[] = [
@@ -20,7 +20,7 @@ const FONTS = [
   { value: "Oswald", label: "Oswald (schmal, plakativ)" },
 ];
 
-function UploadRow({ label, hint, value, onChange }: { label: string; hint: string; value?: string; onChange: (v?: string) => void }) {
+function UploadRow({ label, hint, value, onChange, maxDim }: { label: string; hint: string; value?: string; onChange: (v?: string) => void; maxDim: number }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
     <div className="space-y-1.5">
@@ -30,7 +30,8 @@ function UploadRow({ label, hint, value, onChange }: { label: string; hint: stri
           /* eslint-disable-next-line @next/next/no-img-element */
           ? <img src={value} alt="" className="h-10 w-16 rounded object-cover border border-border bg-muted" />
           : <div className="h-10 w-16 rounded border border-dashed border-border" />}
-        <input ref={ref} type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) onChange(await readFileAsDataUri(f)); }} />
+        {/* Bild wird im Browser verkleinert & komprimiert, bevor es weitergegeben wird. */}
+        <input ref={ref} type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (f) onChange(await compressImage(f, maxDim)); e.target.value = ""; }} />
         <Button type="button" variant="outline" size="sm" onClick={() => ref.current?.click()}><Upload className="h-3.5 w-3.5" /> Hochladen</Button>
         {value && <Button type="button" variant="ghost" size="sm" onClick={() => onChange(undefined)}>Entfernen</Button>}
       </div>
@@ -83,8 +84,8 @@ export function DesignEditor({ design, onChange }: { design: CreativeDesign; onC
       </div>
 
       {/* Uploads */}
-      <UploadRow label="Eigenes Logo (optional)" hint="Ersetzt den Schriftzug oben in der Anzeige." value={design.logo} onChange={(v) => up({ logo: v })} />
-      <UploadRow label="Eigener Hintergrund (optional)" hint="Wird abgedunkelt, damit der Text lesbar bleibt — kein 'Text auf Stock-Foto'." value={design.bgImage} onChange={(v) => up({ bgImage: v })} />
+      <UploadRow label="Eigenes Logo (optional)" hint="Ersetzt den Schriftzug oben in der Anzeige. Wird automatisch verkleinert." value={design.logo} onChange={(v) => up({ logo: v })} maxDim={600} />
+      <UploadRow label="Eigener Hintergrund (optional)" hint="Wird abgedunkelt, damit der Text lesbar bleibt — kein 'Text auf Stock-Foto'. Wird automatisch komprimiert." value={design.bgImage} onChange={(v) => up({ bgImage: v })} maxDim={1600} />
 
       {design.bgImage && (
         <div className="space-y-1.5">
