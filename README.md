@@ -21,7 +21,7 @@ Ein wiederverwendbares System, das aus einem Webinar Angles, markenkonforme Anze
 
 ## 📸 Die Oberfläche
 
-Ein geführter 4-Schritt-Wizard mit Onboarding-Tour, Live-Vorschau und Hell/Dunkel-Modus:
+Ein geführter 4-Schritt-Wizard mit Schritt-Validierung, Befehlspalette (⌘K), Onboarding-Tour, Live-Vorschau und Hell/Dunkel-Modus:
 
 <img src="docs/screenshots/app-wizard.png" width="49%"> <img src="docs/screenshots/app-design.png" width="49%">
 
@@ -42,6 +42,7 @@ Ein geführter 4-Schritt-Wizard mit Onboarding-Tour, Live-Vorschau und Hell/Dunk
 | 🗓️ | **Posting-Plan** — KI-Sequenz über alle Kanäle + kanal-spezifische Captions, Export als `.ics` / `.csv` / `.md` |
 | 📱 | **Feed-Mockup** — Creatives im LinkedIn-/Instagram-Post-Rahmen ansehen |
 | 🔌 | **Anbindungen** — Webhook (Make/n8n/Zapier) & Slack |
+| ⌨️ | **Befehlspalette** (⌘/Ctrl+K) für alle Aktionen · **⌘/Ctrl+↵** generiert · Schritt-Häkchen & Pflichtfeld-Validierung |
 | 🔐 | **Login**, 🌗 **Hell/Dunkel**, 🧭 **Onboarding-Tour**, 💾 **History**, 📋 **Copy-Buttons** |
 
 ---
@@ -82,6 +83,8 @@ Einen **kostenlosen** Gemini-API-Key gibt's in 1 Minute unter **[aistudio.google
 
 **Designprinzip:** Input (`inputs/webinar.json`) und Logik (`brand/brand.json`) sind sauber getrennt — für ein neues Webinar tauscht man **nur den Input**. Der LLM-Output ist über `responseSchema` **garantiert valides JSON** und wird zusätzlich mit **Zod** geprüft. Robust durch **Modell-Fallback** (`2.5-flash → 2.0-flash → 2.5-flash-lite`).
 
+**Performance & Robustheit:** Die Live-Vorschau rendert nur bei *relevanten* Änderungen neu und cached Ergebnisse (spart API-Quota); Animationen laufen über **LazyMotion** (~5 KB statt 34 KB) und respektieren `prefers-reduced-motion`; schwere Libs (`jszip`, `driver.js`) werden **lazy** geladen; eine **Error-Boundary** fängt unerwartete Fehler ab.
+
 ---
 
 ## 🖥️ CLI
@@ -111,7 +114,7 @@ vercel env add GEMINI_API_KEY
 | `brand/brand.json` | Marken-DNA (Farben, Ton, Copy-Regeln) |
 | `lib/` | `generate` · `critique` · `learn-brand` · `extract-webinar` · `plan` · `creative` (Design-Engine) · `gemini` (REST-Client) · `pipeline` |
 | `app/page.tsx` | Geführter Wizard (shadcn/ui) |
-| `app/api/*` | generate · render · preview · angles · learn-brand · extract-webinar · transcribe · plan · webhook · auth |
+| `app/api/*` | generate · render · preview · angles · variant (A/B) · learn-brand · extract-webinar · transcribe · plan · webhook · auth |
 | `proxy.ts` | Passwort-Gate (Next 16 Proxy) |
 | `scripts/` | `generate-cycle` · `learn-brand` · `showcase` · `test-render` |
 
