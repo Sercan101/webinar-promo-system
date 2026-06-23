@@ -57,6 +57,9 @@ async function callModel(model: string, opts: GeminiJsonOptions): Promise<string
       responseMimeType: "application/json",
       responseSchema: toGeminiSchema(opts.schema),
       temperature: opts.temperature ?? 0.75,
+      // „Thinking" aus: für strukturierte Extraktion unnötig — spart massiv Zeit
+      // (kein Timeout) und Tokens/Quota. Auf 2.0/2.5/lite kompatibel.
+      thinkingConfig: { thinkingBudget: 0 },
     },
   });
   const MAX_ATTEMPTS = 4;

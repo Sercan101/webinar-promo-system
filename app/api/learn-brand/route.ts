@@ -6,7 +6,7 @@ import { learnBrand } from "@/lib/learn-brand";
 import type { Brand } from "@/lib/types";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
   try {
