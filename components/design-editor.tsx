@@ -40,6 +40,20 @@ function UploadRow({ label, hint, value, onChange, maxDim }: { label: string; hi
   );
 }
 
+function ColorRow({ label, value, fallback, onChange, hint }: { label: string; value?: string; fallback: string; onChange: (v?: string) => void; hint?: string }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs">{label}</Label>
+      <div className="flex items-center gap-3">
+        <input type="color" value={value ?? fallback} onChange={(e) => onChange(e.target.value)} className="h-9 w-12 rounded border border-border bg-transparent cursor-pointer" />
+        <span className="text-xs text-muted-foreground font-mono">{value ?? "Marken-Standard"}</span>
+        {value && <Button type="button" variant="ghost" size="sm" onClick={() => onChange(undefined)}>Zurücksetzen</Button>}
+      </div>
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
 export function DesignEditor({ design, onChange }: { design: CreativeDesign; onChange: (d: CreativeDesign) => void }) {
   const up = (patch: Partial<CreativeDesign>) => onChange({ ...design, ...patch });
   return (
@@ -64,15 +78,10 @@ export function DesignEditor({ design, onChange }: { design: CreativeDesign; onC
         </div>
       </div>
 
-      {/* Akzentfarbe */}
-      <div className="space-y-1.5">
-        <Label className="text-xs">Akzentfarbe</Label>
-        <div className="flex items-center gap-3">
-          <input type="color" value={design.accent ?? "#E11D2A"} onChange={(e) => up({ accent: e.target.value })} className="h-9 w-12 rounded border border-border bg-transparent cursor-pointer" />
-          <span className="text-xs text-muted-foreground font-mono">{design.accent ?? "Marken-Standard"}</span>
-          {design.accent && <Button type="button" variant="ghost" size="sm" onClick={() => up({ accent: undefined })}>Zurücksetzen</Button>}
-        </div>
-      </div>
+      {/* Farben — frei anpassbar */}
+      <ColorRow label="Akzentfarbe" value={design.accent} fallback="#E11D2A" onChange={(v) => up({ accent: v })} hint="Färbt Badge, Linien, CTA & das hervorgehobene Headline-Wort." />
+      <ColorRow label="Schriftfarbe (Text)" value={design.textColor} fallback="#FFFFFF" onChange={(v) => up({ textColor: v })} hint="Headline & Texte. Gefällt dir die Standardfarbe nicht — hier ändern." />
+      <ColorRow label="Hintergrundfarbe" value={design.bgColor} fallback="#0B0F14" onChange={(v) => up({ bgColor: v })} hint={design.bgImage ? "Wirkt nur ohne Hintergrundbild." : "Einfarbiger Hintergrund der Anzeige."} />
 
       {/* Schrift */}
       <div className="space-y-1.5">

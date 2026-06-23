@@ -112,11 +112,27 @@ function Logo({ design, pal, brand }: { design: CreativeDesign; pal: Pal; brand:
   );
 }
 
+// #RRGGBB -> rgba(...), für abgeleitete gedämpfte Textfarbe.
+function rgba(hex: string, a: number): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const n = parseInt(m[1], 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+}
+
 export function CreativeElement({
   ad, webinar, brand, format = DEFAULT_FORMAT, design = DEFAULT_DESIGN,
 }: { ad: AdCopy; webinar: Webinar; brand: Brand; format?: Format; design?: CreativeDesign }) {
   const accent = design.accent || brand.palette.accent;
-  const pal: Pal = { ...brand.palette, accent, accentSoft: design.accent || brand.palette.accentSoft };
+  const pal: Pal = {
+    ...brand.palette,
+    accent,
+    accentSoft: design.accent || brand.palette.accentSoft,
+    text: design.textColor || brand.palette.text,
+    textMuted: design.textColor ? rgba(design.textColor, 0.72) : brand.palette.textMuted,
+    bg: design.bgColor || brand.palette.bg,
+    bgGradientTo: design.bgColor || brand.palette.bgGradientTo,
+  };
   const tpl = design.template;
   const speakers: Speaker[] = [webinar.host, ...(webinar.guest ? [webinar.guest] : [])];
   const headlineSize = Math.round((ad.headline.length > 34 ? 86 : 104) * format.headlineScale);

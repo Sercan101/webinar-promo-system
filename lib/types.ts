@@ -90,6 +90,8 @@ export type CreativeTemplate = "bold" | "editorial" | "minimal";
 export interface CreativeDesign {
   template: CreativeTemplate;
   accent?: string; // ueberschreibt die Marken-Akzentfarbe
+  textColor?: string; // ueberschreibt die Schrift-/Textfarbe
+  bgColor?: string; // ueberschreibt die Hintergrundfarbe (wenn kein Hintergrundbild)
   bgImage?: string; // data-URI: eigenes Hintergrundbild
   bgDim?: number; // 0..1 Abdunkelung des Hintergrundbilds (Lesbarkeit)
   logo?: string; // data-URI: eigenes Logo
