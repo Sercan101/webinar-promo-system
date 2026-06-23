@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   Sparkles, FileText, Wand2, Calendar, Send, Download, History as HistoryIcon,
   LogOut, Loader2, Palette, MessageSquare, Webhook, RotateCcw, Trash2, ChevronRight, Paintbrush, Info, HelpCircle, Copy, FilePlus2, Eraser,
-  ThumbsUp, MessageCircle, Share2, Gauge, ListChecks, Code2, Rocket, Check, Command as CommandIcon, Moon, Sun,
+  ThumbsUp, MessageCircle, Share2, Gauge, ListChecks, Code2, Rocket, Check, Command as CommandIcon, Moon, Sun, X,
 } from "lucide-react";
 import { m, AnimatePresence } from "motion/react";
 import { useTheme } from "next-themes";
@@ -15,7 +15,8 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Reveal, gridParent, gridChild } from "@/components/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from "@/components/ui/command";
-import { readFileAsDataUri } from "@/lib/file";
+import { readFileAsDataUri, compressImage } from "@/lib/file";
+import { Dropzone } from "@/components/dropzone";
 import defaultWebinar from "@/inputs/webinar.json";
 import {
   adToMarkdown, anglesToMarkdown, emailToHtml, emailToMarkdown,
@@ -64,6 +65,7 @@ export default function Home() {
   const [currentWebinar, setCurrentWebinar] = useState<Webinar | null>(null);
   const [brand, setBrand] = useState<Brand | null>(null);
   const [learning, setLearning] = useState(false);
+  const [exampleImages, setExampleImages] = useState<{ data: string; mimeType: string; preview: string }[]>([]);
   const [importValue, setImportValue] = useState("");
   const [importing, setImporting] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -152,13 +154,26 @@ export default function Home() {
     } catch (e) { fail(e); } finally { setOpening(null); }
   }
 
+  async function addExamples(files: File[]) {
+    const imgs = files.filter((f) => f.type.startsWith("image/"));
+    if (!imgs.length) { toast.error("Bitte Bilddateien (PNG/JPG) der Beispiel-Anzeigen."); return; }
+    const next = await Promise.all(imgs.map(async (f) => {
+      const uri = await compressImage(f, 1200, 0.8); // vor dem Senden verkleinern
+      return { data: uri.split(",")[1] ?? "", mimeType: uri.match(/^data:(.*?);base64/)?.[1] ?? "image/jpeg", preview: uri };
+    }));
+    setExampleImages((cur) => [...cur, ...next].slice(0, 6));
+    toast.success(`${next.length} Beispiel-Anzeige${next.length > 1 ? "n" : ""} hinzugefügt`);
+  }
+
   async function learnBrand() {
     setLearning(true);
     try {
-      const res = await fetch("/api/learn-brand", { method: "POST" });
+      const payload = exampleImages.length ? { images: exampleImages.map(({ data, mimeType }) => ({ data, mimeType })) } : {};
+      const res = await fetch("/api/learn-brand", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Brand-Learning fehlgeschlagen");
-      setBrand(data.brand as Brand); toast.success("Marke aus Beispielen gelernt 🎨");
+      setBrand(data.brand as Brand);
+      toast.success(exampleImages.length ? "Marke aus deinen Beispielen gelernt 🎨" : "Marke aus mitgelieferten Beispielen gelernt 🎨");
     } catch (e) { fail(e); } finally { setLearning(false); }
   }
 
@@ -378,11 +393,32 @@ export default function Home() {
         {/* Step 1 — Marke */}
         <StepCard id="step-marke" n={1} icon={<Palette className="h-4 w-4" />} title="Marke" desc="Das Brand-Kit bestimmt Farben & Ton. Standard nutzen oder aus euren echten Beispiel-Anzeigen ableiten lassen." done={Boolean(brand)}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <Badge variant={brand ? "default" : "secondary"}>{brand ? "aus Beispielen gelernt" : "Standard-Kit aktiv"}</Badge>
+            <Badge variant={brand ? "default" : "secondary"}>{brand ? "Marke gelernt" : "Standard-Kit aktiv"}</Badge>
             <Button variant="outline" size="sm" onClick={learnBrand} disabled={learning}>
-              {learning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Aus Beispielen lernen
+              {learning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {exampleImages.length ? `Aus ${exampleImages.length} eigenen Beispielen lernen` : "Aus Beispielen lernen"}
             </Button>
           </div>
+
+          {/* Eigene Beispiel-Anzeigen hochladen (Drag & Drop) */}
+          <div className="mt-4 space-y-2.5">
+            <Dropzone accept="image/*" multiple busy={learning}
+              title="Eigene Beispiel-Anzeigen hierher ziehen oder klicken"
+              hint="PNG/JPG der Scaling-Champions-Anzeigen — daraus lernt das System Farben & Ton. Optional; ohne Upload werden die mitgelieferten Beispiele genutzt."
+              onFiles={addExamples} />
+            {exampleImages.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {exampleImages.map((img, i) => (
+                  <div key={i} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img.preview} alt="" className="h-16 w-16 rounded-md object-cover border border-border" />
+                    <button type="button" onClick={() => setExampleImages((c) => c.filter((_, j) => j !== i))}
+                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-background border border-border flex items-center justify-center text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {brand && (
             <div className="mt-4 space-y-2">
               <div className="flex flex-wrap gap-1.5">
@@ -415,10 +451,11 @@ export default function Home() {
             </TabsList>
             <TabsContent value="formular" className="mt-4"><WebinarForm webinar={webinar} onChange={setWebinar} /></TabsContent>
             <TabsContent value="pdf" className="mt-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Lade ein <span className="text-foreground">Briefing als PDF</span> hoch — der Text wird im Browser ausgelesen, die Felder werden automatisch extrahiert. Ideal für die Client-Briefings von Scaling Champions.</p>
-              <input type="file" accept="application/pdf,.pdf" disabled={importing}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) extractFromPdf(f); e.target.value = ""; }}
-                className="block text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-transparent file:px-3 file:py-1.5 file:text-sm file:text-foreground" />
+              <p className="text-sm text-muted-foreground">Ziehe ein <span className="text-foreground">Briefing als PDF</span> hierher — der Text wird im Browser ausgelesen (oder per Vision/OCR), die Felder werden automatisch extrahiert. Ideal für die Client-Briefings von Scaling Champions.</p>
+              <Dropzone accept="application/pdf,.pdf" busy={importing}
+                title="PDF-Briefing hierher ziehen oder klicken"
+                hint="Funktioniert auch ohne Text-Ebene (gescannt) — dann per Bild/OCR."
+                onFiles={(files) => { if (files[0]) extractFromPdf(files[0]); }} />
               {importing && <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Lese PDF &amp; extrahiere …</p>}
             </TabsContent>
             <TabsContent value="transkript" className="mt-4 space-y-3">
@@ -432,10 +469,11 @@ export default function Home() {
               <Button variant="outline" size="sm" onClick={() => extractWebinar("url")} disabled={importing || !importValue.trim()}>{importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />} Extrahieren → füllt Formular</Button>
             </TabsContent>
             <TabsContent value="audio" className="mt-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Lade eine <span className="text-foreground">Audio- oder Video-Datei</span> hoch (bis 150 MB) — sie wird im Browser automatisch komprimiert (mono, 16 kHz) und bei Bedarf auf die ersten Minuten gekürzt, damit sie passt. Gemini hört zu und füllt das Formular.</p>
-              <input type="file" accept="audio/*,video/*" disabled={transcribing}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) transcribeMedia(f); e.target.value = ""; }}
-                className="block text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-transparent file:px-3 file:py-1.5 file:text-sm file:text-foreground" />
+              <p className="text-sm text-muted-foreground">Ziehe eine <span className="text-foreground">Audio- oder Video-Datei</span> hierher (bis 150 MB) — sie wird im Browser automatisch komprimiert (mono, 16 kHz) und bei Bedarf auf die ersten Minuten gekürzt, damit sie passt. Gemini hört zu und füllt das Formular.</p>
+              <Dropzone accept="audio/*,video/*" busy={transcribing}
+                title="Audio-/Video-Datei hierher ziehen oder klicken"
+                hint="Wird im Browser komprimiert (mono, 16 kHz) & ggf. gekürzt."
+                onFiles={(files) => { if (files[0]) transcribeMedia(files[0]); }} />
               {transcribing
                 ? <p className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Komprimiere &amp; extrahiere … (kann etwas dauern)</p>
                 : <p className="text-[11px] text-muted-foreground leading-relaxed">Mehrstündiges Webinar oder Datei &gt; 150 MB? Vorab die Audiospur extrahieren:<br /><code className="text-foreground">ffmpeg -i webinar.mp4 -vn -ac 1 -ar 16000 -b:a 48k audio.mp3</code></p>}

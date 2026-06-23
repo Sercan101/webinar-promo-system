@@ -21,9 +21,20 @@ export function loadExamples() {
   return { images, mails };
 }
 
-export async function learnBrand(apiKey: string, base: Brand): Promise<Brand> {
-  const { images, mails } = loadExamples();
-  if (images.length === 0) throw new Error("Keine Beispiel-Anzeigen in assets/examples/ gefunden.");
+export async function learnBrand(
+  apiKey: string,
+  base: Brand,
+  uploaded?: { images?: { data: string; mimeType: string }[]; mails?: string },
+): Promise<Brand> {
+  // Hochgeladene Beispiele bevorzugen; sonst die mitgelieferten in assets/examples/.
+  let images = uploaded?.images ?? [];
+  let mails = uploaded?.mails ?? "";
+  if (images.length === 0) {
+    const ex = loadExamples();
+    images = ex.images;
+    if (!mails) mails = ex.mails;
+  }
+  if (images.length === 0) throw new Error("Keine Beispiel-Anzeigen gefunden — lade welche hoch oder lege sie in assets/examples/ ab.");
 
   const system = "Du bist Brand-Analyst. Du leitest aus echten Werbe-Assets ein präzises Marken-Kit ab.";
   const prompt = `Analysiere die ${images.length} beigefügten Beispiel-Anzeigen (Bilder) und die Beispiel-Mails unten. Leite das Marken-Kit ab:

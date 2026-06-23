@@ -22,13 +22,13 @@
 - `brand/brand.json` → „Die **Marken-DNA** — Farben, Ton, Copy-Regeln. Einmal definiert, oder aus euren Beispielen gelernt."
 > „**Neues Webinar = eine Datei tauschen, kein Umbau.** Genau das war der Kern: läuft & wiederverwendbar. Unten auf der Seite zeig ich das auch im ‚Über dieses System'-Block."
 
-## 3 · Marke wird gelernt, nicht geraten (30 Sek)
-- Button **„Aus Beispielen lernen"** klicken → Paletten-Swatches erscheinen.
-> „Das System liest eure **echten Anzeigen per Vision** (Gemini) und leitet das Brand-Kit ab — Farben, Ton, Copy-Regeln. Es **liest die Bilder wirklich**, statt zu raten. Das ist Kevins ‚Stil lernen', automatisiert."
+## 3 · Marke wird gelernt, nicht geraten (35 Sek)
+- Eigene **Beispiel-Anzeigen per Drag & Drop** ins Feld ziehen → **„Aus eigenen Beispielen lernen"** → Paletten-Swatches erscheinen.
+> „Das System liest **echte Anzeigen per Vision** (Gemini) und leitet das Brand-Kit ab — Farben, Ton, Copy-Regeln. Man kann die **mitgelieferten Beispiele** nutzen oder **eigene reinziehen** — es liest die Bilder wirklich, statt zu raten. Das ist Kevins ‚Stil lernen', automatisiert und austauschbar."
 
-## 4 · Webinar rein — flexibel (20 Sek)
-- Tabs **Transkript / URL / Audio** kurz zeigen.
-> „Man muss kein JSON tippen: Formular, **Transkript**, **Landingpage-URL** — oder sogar eine **Audio-Aufnahme**, dann hört Gemini zu und füllt die Felder. Umgang mit Lücken: fehlt was, fragt das System nicht ab, sondern füllt sinnvoll auf."
+## 4 · Webinar rein — flexibel (25 Sek)
+- Tab **„Aus PDF"** zeigen: ein **Client-Briefing als PDF reinziehen** → Felder füllen sich automatisch.
+> „Man muss nichts tippen. Realistischer Fall: der Kunde schickt ein **Briefing als PDF** — ich zieh's rein, das System liest es (Text **oder** per Vision/OCR, falls keine Text-Ebene da ist) und füllt alle Felder. Genauso geht **Transkript, Landingpage-URL oder eine Audio-/Video-Aufnahme** (wird im Browser komprimiert). Umgang mit Lücken: fehlt was, füllt das System plausibel auf, statt abzubrechen."
 
 ## 5 · Design + Generieren — die grafische Komponente (70 Sek) — *Show-Piece*
 - Im **Design-Schritt**: Vorlage (Bold/Minimal/Editorial), Akzentfarbe, Schrift, Logo/Hintergrund-Upload — **Live-Vorschau** rechts aktualisiert sofort.
