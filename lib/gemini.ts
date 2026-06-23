@@ -59,17 +59,24 @@ async function callModel(model: string, opts: GeminiJsonOptions): Promise<string
       temperature: opts.temperature ?? 0.75,
     },
   });
-  const MAX_ATTEMPTS = 3;
+  const MAX_ATTEMPTS = 4;
 
   let res!: Response;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     res = await fetch(url, { method: "POST", headers, body: payload });
     if (res.ok) break;
+    const txt = await res.text().catch(() => "");
     if (RETRYABLE.has(res.status) && attempt < MAX_ATTEMPTS) {
-      await new Promise((r) => setTimeout(r, 800 * 2 ** (attempt - 1))); // 0.8s, 1.6s
+      // Bei 429 (Rate-Limit) Googles vorgeschlagene Wartezeit (retryDelay) abwarten,
+      // sonst exponentiell. So „heilt" sich ein Pro-Minute-Limit von selbst.
+      let waitMs = 800 * 2 ** (attempt - 1); // 0.8s, 1.6s, 3.2s
+      if (res.status === 429) {
+        const m = txt.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
+        waitMs = m ? Math.min(Math.ceil(Number(m[1]) * 1000) + 600, 22000) : Math.min(6000 * attempt, 20000);
+      }
+      await new Promise((r) => setTimeout(r, waitMs));
       continue;
     }
-    const txt = await res.text().catch(() => "");
     throw new Error(`Gemini API ${res.status}: ${txt.slice(0, 300)}`);
   }
 
