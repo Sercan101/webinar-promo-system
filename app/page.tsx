@@ -110,6 +110,8 @@ export default function Home() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mode, setMode] = useState<"simple" | "pro">("simple");
   const [cyclePhase, setCyclePhase] = useState<CyclePhase>("");
+  const [qaOn, setQaOn] = useState(false); // Qualitäts-Schleife — im Einfach-Modus standardmäßig aus
+  useEffect(() => { setQaOn(mode === "pro"); }, [mode]);
   const { setTheme } = useTheme();
   const [log, setLog] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
@@ -304,7 +306,7 @@ export default function Home() {
     logStep("Assets werden generiert: Angles → 3 Anzeigen × 3 Formate → E-Mail → Qualitäts-Check …", "working");
     try {
       const chosen = angleLab ? angleLab.filter((a) => selectedAngleIds.includes(a.id)) : undefined;
-      const res = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webinar, brand: brand ?? undefined, design, angles: chosen && chosen.length >= 2 ? chosen : undefined }) });
+      const res = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webinar, brand: brand ?? undefined, design, angles: chosen && chosen.length >= 2 ? chosen : undefined, qa: qaOn }) });
       const data = await jsonOrThrow(res) as ApiResult;
       setResult(data); setCurrentWebinar(webinar); saveToHistory(data.bundle, webinar);
       toast.success("Assets generiert ✓"); logStep("Assets generiert — Angles, Anzeigen, E-Mail & Qualitäts-Check fertig ✓", "done");
@@ -691,6 +693,10 @@ export default function Home() {
             {result && <Button variant="outline" onClick={downloadZip}><Download className="h-4 w-4" /> ZIP</Button>}
             <span className="text-xs text-muted-foreground hidden sm:inline">Tipp: <kbd className="rounded border border-border px-1 py-0.5 text-[10px]">⌘</kbd><kbd className="rounded border border-border px-1 py-0.5 text-[10px]">↵</kbd> startet · <kbd className="rounded border border-border px-1 py-0.5 text-[10px]">⌘</kbd><kbd className="rounded border border-border px-1 py-0.5 text-[10px]">K</kbd> Befehle</span>
           </div>
+          <label className="mt-3 flex items-center gap-2 text-xs text-muted-foreground cursor-pointer w-fit">
+            <input type="checkbox" checked={qaOn} onChange={(e) => setQaOn(e.target.checked)} className="accent-primary" />
+            Qualitäts-Check (Self-Critique) durchführen <span className="text-foreground/70">— genauer, aber ~3 zusätzliche KI-Aufrufe{mode === "simple" ? "; im Einfach-Modus standardmäßig aus" : ""}</span>
+          </label>
           {!requiredOk && (
             <p className="mt-2.5 text-xs text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" /> Fülle zuerst die Pflichtfelder im Webinar-Schritt aus: <span className="text-foreground">Titel, Datum, Uhrzeit, Host-Name, Kernproblem</span>.</p>
           )}

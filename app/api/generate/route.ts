@@ -31,8 +31,9 @@ export async function POST(req: Request) {
 
     const design: CreativeDesign | undefined = body?.design;
     const selectedAngles: Angle[] | undefined = body?.angles;
+    const qa: boolean | undefined = body?.qa; // false = QA-Schleife überspringen (Einfach-Modus)
 
-    const bundle = await runPipeline(brand, webinar, undefined, selectedAngles);
+    const bundle = await runPipeline(brand, webinar, undefined, selectedAngles, { qa });
 
     // Pro Anzeige alle Formate rendern (3 Anzeigen × 3 Formate = 9 Creatives).
     const creatives = await renderAdSet(ImageResponse, bundle.ads, webinar, brand, design);
