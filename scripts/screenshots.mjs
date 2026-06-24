@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 import fs from "node:fs";
 
 const BASE = "http://localhost:3000";
-const PW = process.env.APP_PASSWORD || "scaling-champions";
+const PW = process.env.APP_PASSWORD || ""; // Passwort über Env setzen, nicht hartkodieren
 const OUT = "docs/screenshots";
 fs.mkdirSync(OUT, { recursive: true });
 
