@@ -135,6 +135,42 @@ export function planToIcs(plan: PostingPlan): string {
   return lines.join("\r\n");
 }
 
+// ---- Kalender-Anbindung: das Webinar selbst als Termin ----
+const pad2 = (n: number) => String(n).padStart(2, "0");
+function parseGermanDateTime(date: string, time: string) {
+  const dm = date.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (!dm) return null;
+  const tm = time.match(/(\d{1,2})[:.](\d{2})/);
+  return { y: +dm[3], mo: +dm[2], d: +dm[1], h: tm ? +tm[1] : 12, mi: tm ? +tm[2] : 0 };
+}
+
+export function webinarToCalendar(w: Webinar): { ics: string; google: string; outlook: string } | null {
+  const p = parseGermanDateTime(w.date, w.time);
+  if (!p) return null;
+  const endH = (p.h + 1) % 24;
+  const stamp = (h: number) => `${p.y}${pad2(p.mo)}${pad2(p.d)}T${pad2(h)}${pad2(p.mi)}00`;
+  const iso = (h: number) => `${p.y}-${pad2(p.mo)}-${pad2(p.d)}T${pad2(h)}:${pad2(p.mi)}:00`;
+  const start = stamp(p.h), end = stamp(endH);
+  const title = `${w.title}${w.subtitle ? " — " + w.subtitle : ""}`;
+  const desc = `${w.subtitle}\n\nHost: ${w.host?.name ?? ""}${w.guest ? " & " + w.guest.name : ""}\nAnmeldung: ${w.registrationUrl ?? ""}`;
+  const loc = w.registrationUrl || "Online";
+
+  const ics = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scaling Champions//Webinar-Promo//DE", "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT", `UID:webinar-${start}@scaling-champions`,
+    `DTSTART:${start}`, `DTEND:${end}`,
+    `SUMMARY:${icsEscape(title)}`, `DESCRIPTION:${icsEscape(desc)}`, `LOCATION:${icsEscape(loc)}`,
+    "END:VEVENT", "END:VCALENDAR",
+  ].join("\r\n");
+  const google = "https://calendar.google.com/calendar/render?" + new URLSearchParams({
+    action: "TEMPLATE", text: title, dates: `${start}/${end}`, details: desc, location: loc,
+  }).toString();
+  const outlook = "https://outlook.live.com/calendar/0/deeplink/compose?" + new URLSearchParams({
+    path: "/calendar/action/compose", rru: "addevent", subject: title, startdt: iso(p.h), enddt: iso(endH), body: desc, location: loc,
+  }).toString();
+  return { ics, google, outlook };
+}
+
 export function planToCsv(plan: PostingPlan): string {
   const esc = (s: string | number) => `"${String(s).replace(/"/g, '""')}"`;
   const head = ["Datum", "Tage vorher", "Kanal", "Asset", "Format", "Caption", "Begründung"].map(esc).join(",");

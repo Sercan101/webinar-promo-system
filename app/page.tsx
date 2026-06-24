@@ -21,7 +21,7 @@ import { ActivityLog, type LogEntry } from "@/components/activity-log";
 import defaultWebinar from "@/inputs/webinar.json";
 import {
   adToMarkdown, anglesToMarkdown, emailToHtml, emailToMarkdown,
-  planToCsv, planToIcs, planToMarkdown,
+  planToCsv, planToIcs, planToMarkdown, webinarToCalendar,
 } from "@/lib/format";
 import type { AdCopy, Angle, AssetCritique, Brand, CreativeDesign, PostingPlan, PromoBundle, Webinar } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ const HISTORY_KEY = "promo-history-v2";
 const WEBHOOK_KEY = "promo-webhook-url";
 const SLACK_KEY = "promo-slack-url";
 const SMTP_KEY = "promo-smtp";
+const LOG_KEY = "promo-activity-log";
 
 interface SmtpConfig { host: string; port: string; secure: boolean; user: string; pass: string; fromName: string; fromEmail: string }
 const EMPTY_SMTP: SmtpConfig = { host: "", port: "587", secure: false, user: "", pass: "", fromName: "", fromEmail: "" };
@@ -107,9 +108,12 @@ export default function Home() {
   const { setTheme } = useTheme();
   const [log, setLog] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
+  const hydratedRef = useRef(false); // erst speichern, wenn der Load gelaufen ist (sonst Clobber beim Mount)
   const logStep = useCallback((msg: string, kind: LogEntry["kind"] = "info") => {
     setLog((cur) => [...cur, { id: ++logIdRef.current, time: new Date().toLocaleTimeString("de-DE"), msg, kind }].slice(-40));
   }, []);
+  // Log im Hintergrund persistieren (übersteht Reload — fürs Support-Log).
+  useEffect(() => { if (!hydratedRef.current) return; try { localStorage.setItem(LOG_KEY, JSON.stringify(log)); } catch { /* quota */ } }, [log]);
 
   // Nur die Felder, die wirklich im Creative landen — sonst feuert jeder Tastendruck in
   // unbeteiligten Feldern (Pains, Lösung …) einen teuren Render-Call.
@@ -141,7 +145,9 @@ export default function Home() {
       setWebhookUrl(localStorage.getItem(WEBHOOK_KEY) ?? "");
       setSlackUrl(localStorage.getItem(SLACK_KEY) ?? "");
       const sm = localStorage.getItem(SMTP_KEY); if (sm) setSmtp({ ...EMPTY_SMTP, ...JSON.parse(sm) });
+      const lg = localStorage.getItem(LOG_KEY); if (lg) { const parsed = JSON.parse(lg) as LogEntry[]; setLog(parsed); logIdRef.current = parsed.reduce((m, e) => Math.max(m, e.id), 0); }
     } catch { /* ignore */ }
+    hydratedRef.current = true; // ab jetzt darf gespeichert werden
   }, []);
 
   async function startTour() {
@@ -390,6 +396,7 @@ export default function Home() {
   async function logout() { await fetch("/api/auth", { method: "DELETE" }); router.replace("/login"); router.refresh(); }
 
   const eff = result?.bundle.qa ? (result.bundle.qa.after ?? result.bundle.qa.before) : null;
+  const cal = currentWebinar ? webinarToCalendar(currentWebinar) : null;
   // Pflichtfelder für „Generieren" — Basis für Validierung, Häkchen & Fortschritt.
   const requiredOk = Boolean(
     webinar.title?.trim() && webinar.date?.trim() && webinar.time?.trim() &&
@@ -405,6 +412,24 @@ export default function Home() {
     : !plan
     ? "Assets fertig. Erstelle den Posting-Plan — oder lade den kompletten Zyklus als ZIP."
     : "Alles fertig 🎉 — als ZIP exportieren oder per Webhook/Slack weitergeben.";
+
+  // Support-Log: gesamter Verlauf + Diagnose (ohne Secrets) → in die Zwischenablage.
+  function exportSupportLog() {
+    const diag = [
+      "Webinar-Promo-System — Support-Log",
+      `Zeit: ${new Date().toISOString()}`,
+      `URL: ${typeof location !== "undefined" ? location.href : "—"}`,
+      `Browser: ${typeof navigator !== "undefined" ? navigator.userAgent : "—"}`,
+      `Status: webinarReady=${requiredOk} · marke=${brand ? "gelernt" : "standard"} · ergebnis=${Boolean(result)} · plan=${Boolean(plan)}`,
+      `Webinar: ${webinar.title || "—"} · Design: ${design.template}`,
+      "",
+      `--- Verlauf (${log.length} Einträge) ---`,
+      ...log.map((e) => `[${e.time}] ${e.kind.toUpperCase()}: ${e.msg}`),
+    ].join("\n");
+    navigator.clipboard?.writeText(diag)
+      .then(() => toast.success("Support-Log in die Zwischenablage kopiert ✓"))
+      .catch(() => download(`support-log.txt`, diag, "text/plain"));
+  }
 
   // Tastenkürzel: ⌘/Ctrl+K = Befehlspalette, ⌘/Ctrl+↵ = Generieren. genRef hält die aktuelle Closure.
   const genRef = useRef<() => void>(() => {});
@@ -751,6 +776,20 @@ export default function Home() {
             </section>
 
             <section>
+              <SectionTitle icon={<Calendar className="h-4 w-4" />}>Webinar in den Kalender</SectionTitle>
+              <Card><CardContent className="flex items-center gap-2 flex-wrap pt-6">
+                <span className="text-sm text-muted-foreground mr-1">{currentWebinar?.date} · {currentWebinar?.time} — als Termin hinzufügen:</span>
+                {cal ? (
+                  <>
+                    <Button variant="outline" size="sm" asChild><a href={cal.google} target="_blank" rel="noreferrer"><Calendar className="h-4 w-4" /> Google</a></Button>
+                    <Button variant="outline" size="sm" asChild><a href={cal.outlook} target="_blank" rel="noreferrer"><Calendar className="h-4 w-4" /> Outlook</a></Button>
+                    <Button variant="outline" size="sm" onClick={() => download("webinar.ics", cal.ics, "text/calendar")}><Download className="h-4 w-4" /> .ics (Apple/alle)</Button>
+                  </>
+                ) : <span className="text-xs text-muted-foreground">Kein gültiges Webinar-Datum erkannt.</span>}
+              </CardContent></Card>
+            </section>
+
+            <section>
               <SectionTitle icon={<Calendar className="h-4 w-4" />}>Posting-Plan (Content-Kalender)</SectionTitle>
               {!plan ? (
                 <Card><CardContent className="flex items-center justify-between gap-3 flex-wrap pt-6">
@@ -862,7 +901,7 @@ export default function Home() {
       </div>
 
       {/* Aktivitäts-/Guide-Anzeige — zeigt immer, was läuft + den nächsten Schritt */}
-      <ActivityLog entries={log} nextStep={nextStep} busy={busy} />
+      <ActivityLog entries={log} nextStep={nextStep} busy={busy} onExport={exportSupportLog} />
 
       {/* Sticky Aktionsleiste — Hauptaktion immer erreichbar */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, ChevronDown, Check, X, Loader2, Dot } from "lucide-react";
+import { Activity, ChevronDown, Check, X, Loader2, Dot, ClipboardCopy } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 export type LogKind = "info" | "working" | "done" | "error";
@@ -15,7 +15,7 @@ function KindIcon({ kind }: { kind: LogKind }) {
 }
 
 // Persistente Anzeige: was gerade passiert + Verlauf + nächster Schritt (Guiding).
-export function ActivityLog({ entries, nextStep, busy }: { entries: LogEntry[]; nextStep: string; busy: boolean }) {
+export function ActivityLog({ entries, nextStep, busy, onExport }: { entries: LogEntry[]; nextStep: string; busy: boolean; onExport?: () => void }) {
   const [open, setOpen] = useState(true);
   const last = entries[entries.length - 1];
 
@@ -23,13 +23,16 @@ export function ActivityLog({ entries, nextStep, busy }: { entries: LogEntry[]; 
     <div className="fixed left-4 bottom-[4.75rem] z-40 w-[300px] max-w-[calc(100vw-2rem)]">
       {open ? (
         <Card className="shadow-xl py-0 gap-0 overflow-hidden">
-          <button onClick={() => setOpen(false)} className="w-full flex items-center justify-between gap-2 px-3 py-2 border-b border-border hover:bg-muted/40 transition-colors">
+          <div className="w-full flex items-center justify-between gap-2 px-3 py-2 border-b border-border">
             <span className="text-xs font-semibold flex items-center gap-1.5">
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Activity className="h-3.5 w-3.5 text-primary" />}
               Aktivität &amp; Guide
             </span>
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </button>
+            <span className="flex items-center gap-1">
+              {onExport && <button onClick={onExport} title="Support-Log kopieren" className="text-muted-foreground hover:text-foreground p-0.5"><ClipboardCopy className="h-3.5 w-3.5" /></button>}
+              <button onClick={() => setOpen(false)} title="Einklappen" className="text-muted-foreground hover:text-foreground p-0.5"><ChevronDown className="h-3.5 w-3.5" /></button>
+            </span>
+          </div>
           <div className="px-3 py-2 border-b border-border bg-primary/5">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Nächster Schritt</p>
             <p className="text-xs mt-0.5 leading-snug">{nextStep}</p>
