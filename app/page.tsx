@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
-  Sparkles, FileText, Wand2, Calendar, Send, Download, History as HistoryIcon,
+  Sparkles, FileText, Wand2, Calendar, Send, Download, History as HistoryIcon, Mail,
   LogOut, Loader2, Palette, MessageSquare, Webhook, RotateCcw, Trash2, ChevronRight, Paintbrush, Info, HelpCircle, Copy, FilePlus2, Eraser,
   ThumbsUp, MessageCircle, Share2, Gauge, ListChecks, Code2, Rocket, Check, Command as CommandIcon, Moon, Sun, X,
 } from "lucide-react";
@@ -42,6 +42,10 @@ interface HistoryEntry { id: string; savedAt: number; title: string; bundle: Pro
 const HISTORY_KEY = "promo-history-v2";
 const WEBHOOK_KEY = "promo-webhook-url";
 const SLACK_KEY = "promo-slack-url";
+const SMTP_KEY = "promo-smtp";
+
+interface SmtpConfig { host: string; port: string; secure: boolean; user: string; pass: string; fromName: string; fromEmail: string }
+const EMPTY_SMTP: SmtpConfig = { host: "", port: "587", secure: false, user: "", pass: "", fromName: "", fromEmail: "" };
 
 const EMPTY_WEBINAR: Webinar = {
   title: "", subtitle: "", format: "Live-Webinar", date: "", time: "", registrationUrl: "", audience: "",
@@ -89,6 +93,9 @@ export default function Home() {
   const [webhookUrl, setWebhookUrl] = useState("");
   const [slackUrl, setSlackUrl] = useState("");
   const [sending, setSending] = useState<"webhook" | "slack" | null>(null);
+  const [smtp, setSmtp] = useState<SmtpConfig>(EMPTY_SMTP);
+  const [recipients, setRecipients] = useState("");
+  const [sendingMail, setSendingMail] = useState<"test" | "list" | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -133,6 +140,7 @@ export default function Home() {
       const h = localStorage.getItem(HISTORY_KEY); if (h) setHistory(JSON.parse(h));
       setWebhookUrl(localStorage.getItem(WEBHOOK_KEY) ?? "");
       setSlackUrl(localStorage.getItem(SLACK_KEY) ?? "");
+      const sm = localStorage.getItem(SMTP_KEY); if (sm) setSmtp({ ...EMPTY_SMTP, ...JSON.parse(sm) });
     } catch { /* ignore */ }
   }, []);
 
@@ -323,6 +331,32 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error ?? "Senden fehlgeschlagen");
       toast.success(kind === "slack" ? "An Slack gesendet ✓" : `An Webhook gesendet ✓ (HTTP ${data.status})`);
     } catch (e) { fail(e); } finally { setSending(null); }
+  }
+
+  async function sendEmail(mode: "test" | "list") {
+    if (!result) return;
+    if (!smtp.host.trim() || !smtp.fromEmail.trim()) { toast.error("Bitte SMTP-Host und Absender-Adresse ausfüllen."); return; }
+    const to = mode === "test"
+      ? [smtp.user.trim() || smtp.fromEmail.trim()]
+      : recipients.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
+    if (to.length === 0) { toast.error("Bitte Empfänger-Adressen eintragen."); return; }
+    try { localStorage.setItem(SMTP_KEY, JSON.stringify(smtp)); } catch { /* quota */ }
+    setSendingMail(mode);
+    logStep(mode === "test" ? `Test-Mail wird an ${to[0]} gesendet …` : `E-Mail wird an ${to.length} Empfänger gesendet …`, "working");
+    try {
+      const email = result.bundle.email;
+      const html = emailToHtml(email, design.accent || "#E11D2A");
+      const text = emailToMarkdown(email);
+      const from = smtp.fromName.trim() ? `${smtp.fromName.trim()} <${smtp.fromEmail.trim()}>` : smtp.fromEmail.trim();
+      const res = await fetch("/api/send-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        smtp: { host: smtp.host, port: smtp.port, secure: smtp.secure, user: smtp.user, pass: smtp.pass },
+        from, to, subject: email.subject, html, text,
+      }) });
+      const data = await jsonOrThrow(res);
+      toast.success(`${data.sent}/${data.total} E-Mail(s) gesendet ✓`);
+      logStep(`${data.sent}/${data.total} E-Mail(s) per SMTP gesendet ✓`, "done");
+      if (Array.isArray(data.errors)) data.errors.forEach((e: string) => logStep("Mail-Fehler: " + e, "error"));
+    } catch (e) { fail(e); } finally { setSendingMail(null); }
   }
 
   async function downloadZip() {
@@ -770,6 +804,28 @@ export default function Home() {
                       <Input value={slackUrl} onChange={(e) => setSlackUrl(e.target.value)} placeholder="https://hooks.slack.com/services/…" className="flex-1 min-w-60" />
                       <Button variant="outline" onClick={() => sendTo("slack")} disabled={sending === "slack"}>{sending === "slack" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Senden</Button>
                     </div>
+                  </div>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium mb-1 flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> E-Mail per SMTP senden</p>
+                    <p className="text-xs text-muted-foreground mb-2">Eigener SMTP-Server (Gmail, Outlook, eigener Host …) — kein Drittanbieter. Zugangsdaten bleiben lokal im Browser und gehen nur zum Senden an den Server.</p>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      <Input value={smtp.host} onChange={(e) => setSmtp({ ...smtp, host: e.target.value })} placeholder="SMTP-Host (z.B. smtp.gmail.com)" />
+                      <div className="flex gap-2 items-center">
+                        <Input value={smtp.port} onChange={(e) => setSmtp({ ...smtp, port: e.target.value })} placeholder="Port" className="w-24" />
+                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap"><input type="checkbox" checked={smtp.secure} onChange={(e) => setSmtp({ ...smtp, secure: e.target.checked })} className="accent-primary" /> SSL (Port 465)</label>
+                      </div>
+                      <Input value={smtp.user} onChange={(e) => setSmtp({ ...smtp, user: e.target.value })} placeholder="Benutzer / E-Mail (Login)" />
+                      <Input type="password" value={smtp.pass} onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })} placeholder="Passwort / App-Passwort" />
+                      <Input value={smtp.fromName} onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })} placeholder="Absender-Name (z.B. Johannes Rasch)" />
+                      <Input value={smtp.fromEmail} onChange={(e) => setSmtp({ ...smtp, fromEmail: e.target.value })} placeholder="Absender-Adresse" />
+                    </div>
+                    <Textarea value={recipients} onChange={(e) => setRecipients(e.target.value)} placeholder="Empfänger — eine Adresse pro Zeile (oder Komma-getrennt)" className="mt-2 min-h-20" />
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      <Button variant="outline" onClick={() => sendEmail("test")} disabled={sendingMail !== null}>{sendingMail === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Test an mich</Button>
+                      <Button onClick={() => sendEmail("list")} disabled={sendingMail !== null}>{sendingMail === "list" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} An Empfänger senden</Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1.5">Versendet die generierte Einladung (Betreff + HTML). Tipp: erst „Test an mich". Max. 50 Empfänger pro Versand.</p>
                   </div>
                 </CardContent></Card>
               )}

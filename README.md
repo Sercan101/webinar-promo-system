@@ -43,6 +43,7 @@ Ein geführter 4-Schritt-Wizard mit Schritt-Validierung, Befehlspalette (⌘K), 
 | 🗓️ | **Posting-Plan** — KI-Sequenz über alle Kanäle + kanal-spezifische Captions, Export als `.ics` / `.csv` / `.md` |
 | 📱 | **Feed-Mockup** — Creatives im LinkedIn-/Instagram-Post-Rahmen ansehen |
 | 🔌 | **Anbindungen** — Webhook (Make/n8n/Zapier) & Slack |
+| 📤 | **E-Mail-Versand per SMTP** — eigener SMTP-Server (kein Drittanbieter); verschickt die Einladung direkt an eine Empfängerliste (mit Test-Versand) |
 | ⌨️ | **Befehlspalette** (⌘/Ctrl+K) für alle Aktionen · **⌘/Ctrl+↵** generiert · Schritt-Häkchen & Pflichtfeld-Validierung |
 | 🔐 | **Login**, 🌗 **Hell/Dunkel**, 🧭 **Onboarding-Tour**, 💾 **History**, 📋 **Copy-Buttons** |
 
