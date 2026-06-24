@@ -35,7 +35,7 @@ Ein geführter 4-Schritt-Wizard mit Schritt-Validierung, Befehlspalette (⌘K), 
 | 🗜️ | **Uploads werden clientseitig komprimiert** — Bilder verkleinert, Audio/Video auf mono/16 kHz gerechnet & bei Bedarf gekürzt (passt unter API-Limits, spart Quota) |
 | 🎨 | **Marke lernen** — leitet das Brand-Kit (Farben, Ton, Copy-Regeln) per Vision aus echten Beispiel-Anzeigen ab |
 | 🎯 | **Angle-Lab** — leitet mehrere Angles ab und bewertet jede nach vorhergesagter „Ziehkraft" (0–10); du wählst die stärksten |
-| 🖼️ | **Design-Engine** — 3 Vorlagen, eigene Akzentfarbe, eigene Schrift, eigenes Logo & Hintergrundbild — als PNG gerendert (Satori), mit **Live-Vorschau** |
+| 🖼️ | **Design-Engine** — 3 Vorlagen, frei wählbare Farben (Akzent · Schrift · Hintergrund), Schrift, **Headline-Größe**, **Schrift-Helligkeit**, **Elemente ein-/ausblenden** (Logo/Badge/Untertitel/Speaker/CTA), eigenes Logo & Hintergrundbild — als PNG gerendert (Satori), mit **Live-Vorschau** |
 | 📐 | **3 Formate je Anzeige** — 1:1 Feed · 4:5 Feed · 9:16 Story |
 | ⭐ | **Qualitäts-Loop** — ein zweiter KI-Pass bewertet jedes Asset (0–10) und bessert schwache automatisch nach |
 | 🔀 | **A/B-Varianten** — pro Anzeige eine alternative Copy-Variante zum Testen erzeugen |
@@ -44,6 +44,8 @@ Ein geführter 4-Schritt-Wizard mit Schritt-Validierung, Befehlspalette (⌘K), 
 | 📱 | **Feed-Mockup** — Creatives im LinkedIn-/Instagram-Post-Rahmen ansehen |
 | 🔌 | **Anbindungen** — Webhook (Make/n8n/Zapier) & Slack |
 | 📤 | **E-Mail-Versand per SMTP** — eigener SMTP-Server (kein Drittanbieter); verschickt die Einladung direkt an eine Empfängerliste (mit Test-Versand) |
+| 📅 | **Kalender-Anbindung** — Webinar als Termin: Google Calendar · Outlook · `.ics` |
+| 🧭 | **Aktivitäts-/Guide-Anzeige** — zeigt live, was läuft, den nächsten Schritt & einen Verlauf; **Support-Log** (persistent) per Klick kopierbar |
 | ⌨️ | **Befehlspalette** (⌘/Ctrl+K) für alle Aktionen · **⌘/Ctrl+↵** generiert · Schritt-Häkchen & Pflichtfeld-Validierung |
 | 🔐 | **Login**, 🌗 **Hell/Dunkel**, 🧭 **Onboarding-Tour**, 💾 **History**, 📋 **Copy-Buttons** |
 
@@ -83,7 +85,7 @@ Einen **kostenlosen** Gemini-API-Key gibt's in 1 Minute unter **[aistudio.google
 [6] Posting-Plan   Sequenz + Captions → .ics/.csv                           lib/plan.ts
 ```
 
-**Designprinzip:** Input (`inputs/webinar.json`) und Logik (`brand/brand.json`) sind sauber getrennt — für ein neues Webinar tauscht man **nur den Input**. Der LLM-Output ist über `responseSchema` **garantiert valides JSON** und wird zusätzlich mit **Zod** geprüft. Robust durch **Modell-Fallback** (`2.5-flash → 2.0-flash → 2.5-flash-lite`).
+**Designprinzip:** Input (`inputs/webinar.json`) und Logik (`brand/brand.json`) sind sauber getrennt — für ein neues Webinar tauscht man **nur den Input**. Der LLM-Output ist über `responseSchema` **garantiert valides JSON** und wird zusätzlich mit **Zod** geprüft. Robust durch **Modell-Fallback** (`2.5-flash → 2.5-flash-lite → flash-latest`) und „Thinking aus" (schneller, weniger Quota).
 
 **Performance & Robustheit:** Die Live-Vorschau rendert nur bei *relevanten* Änderungen neu und cached Ergebnisse (spart API-Quota); Animationen laufen über **LazyMotion** (~5 KB statt 34 KB) und respektieren `prefers-reduced-motion`; schwere Libs (`jszip`, `driver.js`) werden **lazy** geladen; eine **Error-Boundary** fängt unerwartete Fehler ab.
 
@@ -116,7 +118,7 @@ vercel env add GEMINI_API_KEY
 | `brand/brand.json` | Marken-DNA (Farben, Ton, Copy-Regeln) |
 | `lib/` | `generate` · `critique` · `learn-brand` · `extract-webinar` · `plan` · `creative` (Design-Engine) · `gemini` (REST-Client) · `pipeline` |
 | `app/page.tsx` | Geführter Wizard (shadcn/ui) |
-| `app/api/*` | generate · render · preview · angles · variant (A/B) · learn-brand · extract-webinar · transcribe · plan · webhook · auth |
+| `app/api/*` | generate · render · preview · angles · variant (A/B) · learn-brand · extract-webinar · transcribe · plan · webhook · **send-email (SMTP)** · auth |
 | `proxy.ts` | Passwort-Gate (Next 16 Proxy) |
 | `scripts/` | `generate-cycle` · `learn-brand` · `showcase` · `test-render` |
 
@@ -124,7 +126,7 @@ vercel env add GEMINI_API_KEY
 
 ## 🧰 Tech-Stack
 
-Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · shadcn/ui · Satori (`@vercel/og`) für Bild-Rendering · Google Gemini (REST) · Zod · driver.js (Tour) · next-themes.
+Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · shadcn/ui · Motion (Animationen) · Satori (`@vercel/og`) für Bild-Rendering · Google Gemini (REST) · Zod · pdf.js + lamejs (Client-Kompression) · nodemailer (SMTP) · driver.js (Tour) · next-themes.
 
 > **Hinweis:** Dieses Repo ist mit dem Beispiel **„Scaling Champions"** vorkonfiguriert. Für eine andere Marke einfach `brand/brand.json` und `inputs/webinar.json` ersetzen (oder die Marke per „Aus Beispielen lernen" ableiten lassen).
 
