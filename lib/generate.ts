@@ -11,7 +11,7 @@ import {
 
 // Modell-Fallback-Kette (alle im Free-Tier). Bei Quota/Überlast auf das nächste Modell.
 // gemini-2.0-flash wurde von Google abgeschaltet (404) → aktuelle Modelle + zukunftssicherer Alias.
-export const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest"];
+export const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flash-latest", "gemini-flash-lite-latest"];
 export const MODEL = MODELS[0]; // Anzeige/Doku
 
 // --- Echte Marken-Beispiele als Stil-Anker (aus dem Material-Paket) ---
