@@ -9,12 +9,12 @@ const webinar: Webinar = JSON.parse(fs.readFileSync(path.join(process.cwd(), "in
 
 const samples: AdCopy[] = [
   {
-    angleId: "krise-als-weckruf", variant: "headline",
-    headline: "Volle Pipelines trotz IT-Markt-Krise",
-    accentWord: "IT-Markt-Krise",
+    angleId: "marktflaute-als-weckruf", variant: "headline",
+    headline: "Volle Pipeline trotz Marktflaute",
+    accentWord: "Marktflaute",
     subline: "Wie du im KI-Zeitalter als Trusted Advisor herausstichst – statt im Lärm unterzugehen.",
     proofStat: "",
-    hook: "Live: Warum 90% der IT-Unternehmen in der Leadgenerierung feststecken",
+    hook: "Live: Warum viele B2B-Unternehmen in der Leadgenerierung feststecken",
     body: "Mehr Aktivität löst das Problem nicht.", bullets: ["a", "b", "c", "d"], cta: "Mehr ansehen",
   },
   {
@@ -27,11 +27,11 @@ const samples: AdCopy[] = [
   },
   {
     angleId: "planbarkeit-und-proof", variant: "proof",
-    headline: "Jahresziel im Q1 geknackt",
-    accentWord: "Q1",
+    headline: "Jahresziel früher geknackt",
+    accentWord: "früher",
     subline: "Nicht mehr Leads – ein besseres Setup. So wird Kundengewinnung planbar.",
-    proofStat: "Jahresziel im Q1 übertroffen · 840k€ Auftragseingang",
-    hook: "Live: Wie ein besseres Setup das Jahresziel im Q1 knackt", body: "x", bullets: ["a", "b", "c", "d"], cta: "Platz sichern",
+    proofStat: "Jahresziel früher als geplant erreicht",
+    hook: "Live: Wie ein besseres Setup das Jahresziel früher knackt", body: "x", bullets: ["a", "b", "c", "d"], cta: "Platz sichern",
   },
 ];
 

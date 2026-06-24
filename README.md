@@ -128,7 +128,7 @@ vercel env add GEMINI_API_KEY
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · shadcn/ui · Motion (Animationen) · Satori (`@vercel/og`) für Bild-Rendering · Google Gemini (REST) · Zod · pdf.js + lamejs (Client-Kompression) · nodemailer (SMTP) · driver.js (Tour) · next-themes.
 
-> **Hinweis:** Dieses Repo ist mit dem Beispiel **„Scaling Champions"** vorkonfiguriert. Für eine andere Marke einfach `brand/brand.json` und `inputs/webinar.json` ersetzen (oder die Marke per „Aus Beispielen lernen" ableiten lassen).
+> **Hinweis:** Dieses Repo ist mit einem **generischen Demo-Beispiel** (fiktive Marke „Northpeak") vorkonfiguriert. Für eine andere Marke einfach `brand/brand.json` und `inputs/webinar.json` ersetzen (oder die Marke per „Aus Beispielen lernen" ableiten lassen).
 
 ## 📄 Lizenz
 

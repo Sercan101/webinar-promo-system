@@ -43,7 +43,7 @@ const RUBRIK = `BEWERTUNGS-RUBRIK (0-10 je Asset, 10 = man würde es exakt so ra
 - Ist der Pain klar adressiert und der Angle erkennbar?
 - Anzeigen: zugespitzte Headline, sinnvolles Akzentwort, konkrete (keine floskelhaften) Bullets, passender CTA?
 - E-Mail: Problem-Agitate-Solve, erzählerisch mit konkretem Case, kein Clickbait, klarer CTA + Termin?
-- Würde ein erfahrener Performance-Marketer bei Scaling Champions das so freigeben?
+- Würde ein erfahrener Performance-Marketer bei Northpeak das so freigeben?
 verdict = "revise", wenn der Score < 7, sonst "ok". issues = konkrete, umsetzbare Mängel. strengths = was gut ist.`;
 
 // Bewertet alle Anzeigen + E-Mail in EINEM Call.

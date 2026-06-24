@@ -507,7 +507,7 @@ export default function Home() {
           <div className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/55 shadow-sm"><Sparkles className="h-4 w-4 text-primary-foreground" /></span>
             <h1 className="text-lg font-bold">Webinar-Promo-System</h1>
-            <Badge variant="outline" className="text-muted-foreground">Scaling Champions</Badge>
+            <Badge variant="outline" className="text-muted-foreground">Northpeak</Badge>
           </div>
           <div className="flex items-center gap-1">
             <div id="mode-toggle" className="flex rounded-md border border-border p-0.5 mr-1">
@@ -570,7 +570,7 @@ export default function Home() {
           <div className="mt-4 space-y-2.5">
             <Dropzone accept="image/*" multiple busy={learning} maxMB={25}
               title="Eigene Beispiel-Anzeigen hierher ziehen oder klicken"
-              hint="PNG/JPG der Scaling-Champions-Anzeigen — daraus lernt das System Farben & Ton. Optional; ohne Upload werden die mitgelieferten Beispiele genutzt. Bilder werden automatisch komprimiert."
+              hint="PNG/JPG der Northpeak-Anzeigen — daraus lernt das System Farben & Ton. Optional; ohne Upload werden die mitgelieferten Beispiele genutzt. Bilder werden automatisch komprimiert."
               onFiles={addExamples} />
             {exampleImages.length > 0 && (
               <div className="flex flex-wrap gap-2">
@@ -619,7 +619,7 @@ export default function Home() {
             </TabsList>
             <TabsContent value="formular" className="mt-4"><WebinarForm webinar={webinar} onChange={setWebinar} /></TabsContent>
             <TabsContent value="pdf" className="mt-4 space-y-3">
-              <p className="text-sm text-muted-foreground">Ziehe ein <span className="text-foreground">Briefing als PDF</span> hierher — der Text wird im Browser ausgelesen (oder per Vision/OCR), die Felder werden automatisch extrahiert. Ideal für die Client-Briefings von Scaling Champions.</p>
+              <p className="text-sm text-muted-foreground">Ziehe ein <span className="text-foreground">Briefing als PDF</span> hierher — der Text wird im Browser ausgelesen (oder per Vision/OCR), die Felder werden automatisch extrahiert. Ideal für die Client-Briefings von Northpeak.</p>
               <Dropzone accept="application/pdf,.pdf" busy={importing} maxMB={30}
                 title="PDF-Briefing hierher ziehen oder klicken"
                 hint="Funktioniert auch ohne Text-Ebene (gescannt) — dann per Bild/OCR."
@@ -897,7 +897,7 @@ export default function Home() {
                     </div>
                     <Input value={smtp.user} onChange={(e) => setSmtp({ ...smtp, user: e.target.value })} placeholder="Benutzer / E-Mail (Login)" />
                     <Input type="password" value={smtp.pass} onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })} placeholder="Passwort / App-Passwort" />
-                    <Input value={smtp.fromName} onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })} placeholder="Absender-Name (z.B. Johannes Rasch)" />
+                    <Input value={smtp.fromName} onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })} placeholder="Absender-Name (z.B. Daniel Brandt)" />
                     <Input value={smtp.fromEmail} onChange={(e) => setSmtp({ ...smtp, fromEmail: e.target.value })} placeholder="Absender-Adresse" />
                   </div>
                 </div>
@@ -1206,7 +1206,7 @@ function FeedMockup({ img, caption }: { img: string; caption: string }) {
       <div className="flex items-center gap-2 p-3">
         <span className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">SC</span>
         <div className="leading-tight">
-          <p className="text-sm font-semibold">Scaling Champions</p>
+          <p className="text-sm font-semibold">Northpeak</p>
           <p className="text-[11px] text-muted-foreground">Gesponsert · 4.812 Follower:innen</p>
         </div>
       </div>

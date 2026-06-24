@@ -15,28 +15,28 @@ export const MODELS = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-flas
 export const MODEL = MODELS[0]; // Anzeige/Doku
 
 // --- Echte Marken-Beispiele als Stil-Anker (aus dem Material-Paket) ---
-const EXAMPLE_AD = `Live: Warum 90% der IT-Unternehmen in der Leadgenerierung feststecken – und wie dominierende Teams ihre Kundengewinnung jetzt neu aufsetzen.
+const EXAMPLE_AD = `Live: Warum viele B2B-Unternehmen in der Leadgenerierung feststecken – und wie führende Teams ihre Kundengewinnung jetzt neu aufsetzen.
 
 Du erhältst:
-✓ Trusted Advisor System für eine planbare Kundengewinnung (inkl. Best Practices aus +450 Skalierungsprojekten)
-✓ Wie du mit 3 Formaten eine Kundenreise baust, mit der du dominierst und am ersten Touchpoint an Vertrauen gewinnst
+✓ Trusted-Advisor-System für eine planbare Kundengewinnung (inkl. Best Practices aus vielen Projekten)
+✓ Wie du mit 3 Formaten eine Kundenreise baust, mit der du am ersten Touchpoint Vertrauen gewinnst
 ✓ Wie du in 90 Tagen Marketing & Sales aufstellst, das Nachfragesog erzeugt (inkl. Roadmap)
-✓ Wie du dein Portfolio so strukturierst, dass du nicht mehr vergleichbar bist und kontinuierlich Upsells generierst`;
+✓ Wie du dein Portfolio so strukturierst, dass du nicht mehr vergleichbar bist und Upsells generierst`;
 
-const EXAMPLE_EMAIL = `Betreff: Die haben ihr Jahresziel im Q1 geknackt
+const EXAMPLE_EMAIL = `Betreff: Sie haben ihr Jahresziel früher geknackt
 
 Hi,
 die meisten glauben, sie brauchen mehr Leads, damit Vertrieb endlich stabil läuft. Stimmt aber nicht. Ich sehe gerade eher das Gegenteil: Unternehmen mit genug Leads – aber trotzdem keine planbare Pipeline.
 
-Ein Beispiel: Eine Digitalagentur, über 100 Mitarbeitende. Sales lief, Termine waren da. Aber es hat sich nie wirklich stabil angefühlt. Mal kam was rein, dann wieder nicht.
+Ein Beispiel: Eine mittelständische Agentur. Sales lief, Termine waren da. Aber es hat sich nie wirklich stabil angefühlt. Mal kam was rein, dann wieder nicht.
 
 Was sie geändert haben, war kein zusätzlicher Kanal. Sondern das Setup. Ein bezahltes Vorprodukt, das nicht verkauft – sondern den Kunden zwingt, sauber durch seine Situation zu gehen. Durchgeführt von Consultants, nicht von Sales.
 
-Ergebnis: Neukundenumsatz-Ziel für das Jahr im ersten Quartal übererfüllt. Nicht, weil sie besser verkaufen. Sondern weil ihr System anders aufgebaut ist.
+Ergebnis: Neukundenumsatz-Ziel für das Jahr früher als geplant erreicht. Nicht, weil sie besser verkaufen. Sondern weil ihr System anders aufgebaut ist.
 
 📅 08. Mai | 12:00 Uhr
 👉 Hier Platz sichern
-Viele Grüße, Johannes`;
+Viele Grüße, Daniel`;
 
 export function brandContext(brand: Brand): string {
   return `MARKE: ${brand.name} (${brand.url})

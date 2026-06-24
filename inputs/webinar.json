@@ -1,21 +1,19 @@
 {
-  "_comment": "DER EINZIGE INPUT, DEN MAN TAUSCHT. Für ein neues Webinar nur diese Datei ersetzen -> gleiches System, neuer Output.",
-  "title": "Volle Pipelines trotz IT-Markt-Krise",
-  "subtitle": "Wie du im KI-Zeitalter als Trusted Advisor herausstichst",
+  "_comment": "DER EINZIGE INPUT, DEN MAN TAUSCHT. Für ein neues Webinar nur diese Datei ersetzen -> gleiches System, neuer Output. (Generisches Demo-Beispiel.)",
+  "title": "Volle Pipeline trotz Marktflaute",
+  "subtitle": "Wie du im KI-Zeitalter als Trusted Advisor planbar Kunden gewinnst",
   "format": "Live-Webinar",
   "date": "08.05.2025",
   "time": "12:00 Uhr",
-  "registrationUrl": "hub.scaling-champions.com",
-  "audience": "Entscheider im B2B-/IT-Transformationsumfeld — neben CEOs auch Marketing- und Sales-Verantwortliche",
+  "registrationUrl": "hub.northpeak.example",
+  "audience": "Entscheider im B2B-Umfeld — neben CEOs auch Marketing- und Sales-Verantwortliche",
   "host": {
-    "name": "Johannes Rasch",
-    "role": "CEO Scaling Champions",
-    "photo": "johannes-rasch.png"
+    "name": "Daniel Brandt",
+    "role": "CEO Northpeak"
   },
   "guest": {
-    "name": "Hans Piechatzek",
-    "role": "Geschäftsführer move:elevator",
-    "photo": "hans-piechatzek.png"
+    "name": "Sarah König",
+    "role": "Geschäftsführerin Brandwerk Studio"
   },
   "pains": [
     "Trockene Pipeline, keine eigene Leadgenerierung",
@@ -38,8 +36,8 @@
     "Ein Sales-Team, das sich zu 100% auf Neukunden fokussiert"
   ],
   "proofCases": [
-    "Digitalagentur (>100 Mitarbeitende, move:elevator): Neukundenumsatz-Jahresziel bereits im Q1 übertroffen — im Enterprise-Segment.",
-    "Systemhaus (>60 Mitarbeitende): über Gesamttransformation 840k€ Auftragseingang generiert.",
-    "Entwicklungspartner (>19 Mitarbeitende): nach 3 Monaten mittlerer 6-stelliger Auftragseingang über ein Small Product."
+    "Eine mittelständische Agentur erreichte ihr Neukundenumsatz-Jahresziel früher als geplant.",
+    "Ein Systemhaus generierte über eine Gesamttransformation deutlich mehr Auftragseingang.",
+    "Ein Entwicklungspartner gewann über ein Small Product nach wenigen Monaten planbar Neukunden."
   ]
 }

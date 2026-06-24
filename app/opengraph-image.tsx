@@ -38,7 +38,7 @@ export default function OpengraphImage() {
           >
             →
           </div>
-          <div style={{ display: "flex", fontSize: 28, fontWeight: 600, color: "#a1a1aa" }}>Scaling Champions</div>
+          <div style={{ display: "flex", fontSize: 28, fontWeight: 600, color: "#a1a1aa" }}>Northpeak</div>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>

@@ -1,8 +1,8 @@
 {
-  "name": "Scaling Champions",
-  "url": "hub.scaling-champions.com",
-  "logoText": "Scaling Champions",
-  "_comment": "Marken-DNA, EINMALIG aus den Beispiel-Anzeigen & -Mails gelernt. Wird nicht pro Webinar geaendert.",
+  "name": "Northpeak",
+  "url": "hub.northpeak.example",
+  "logoText": "Northpeak",
+  "_comment": "Marken-DNA (generisches Demo-Beispiel). EINMALIG aus Beispiel-Anzeigen & -Mails gelernt; wird nicht pro Webinar geaendert.",
   "palette": {
     "bg": "#0C0F14",
     "bgGradientTo": "#161B22",
@@ -23,16 +23,16 @@
     "address": "du",
     "tone": "direkt, klar, B2B, kein Blabla, selbstbewusst, problem-bewusst. Keine Buzzword-Soße, keine Übertreibung.",
     "principles": [
-      "Sprich Entscheider in IT-/B2B-Unternehmen an (CEOs, Marketing, Sales).",
+      "Sprich Entscheider in B2B-Unternehmen an (CEOs, Marketing, Sales).",
       "Benenne den Pain konkret, bevor du die Lösung zeigst (Problem-Agitate-Solve).",
-      "Nutze konkrete Zahlen/Cases statt Adjektive (z.B. '90% der IT-Unternehmen', 'Jahresziel im Q1 übertroffen', '840k€').",
+      "Nutze konkrete Beispiele/Cases statt Adjektive (z.B. 'Jahresziel früher erreicht', 'planbare Pipeline').",
       "Trusted Advisor statt Klicki-Bunti. Vertrauen schlägt Lärm.",
       "Kein Hype, kein 'revolutionär', kein Emoji-Spam. Ein einzelnes Emoji als Akzent ist okay."
     ]
   },
   "adCopyFormat": {
-    "_comment": "Struktur aus den 3 Beispiel-Anzeigen abgeleitet.",
-    "hookPattern": "Live: <zugespitzte Frage oder Behauptung mit Zahl>",
+    "_comment": "Struktur aus Beispiel-Anzeigen abgeleitet.",
+    "hookPattern": "Live: <zugespitzte Frage oder Behauptung>",
     "bulletsLabel": "Du erhältst:",
     "bulletCount": 4,
     "bulletStyle": "Häkchen-Bullets, je ein konkreter Nutzen/Outcome, kurz.",
@@ -43,12 +43,12 @@
     "footerCtaText": "Mehr ansehen",
     "sublineMaxChars": 90,
     "headlineMaxWords": 7,
-    "_comment": "Visuelle Sprache: dunkler, seriöser Hintergrund; rotes LIVE-WEBINAR-Badge; fette weiße Headline mit EINEM rot akzentuierten Keyword; Speaker-Strip unten mit Name+Rolle; Logo + URL."
+    "_comment": "Visuelle Sprache: dunkler, seriöser Hintergrund; LIVE-WEBINAR-Badge; fette weiße Headline mit EINEM akzentuierten Keyword; Speaker-Strip unten mit Name+Rolle; Logo + URL."
   },
   "emailFormat": {
-    "_comment": "Aus den 3 Beispiel-Mails (Johannes Rasch) abgeleitet.",
-    "fromName": "Johannes Rasch",
-    "fromRole": "Geschäftsführer Scaling Champions",
+    "_comment": "Aus Beispiel-Mails abgeleitet.",
+    "fromName": "Daniel Brandt",
+    "fromRole": "CEO Northpeak",
     "greeting": "Hi!",
     "structure": [
       "Betreff: zugespitzt, neugierig machend, ohne Clickbait-Lüge",
@@ -57,7 +57,7 @@
       "Agitation: warum das übliche Vorgehen (mehr Aktivität) nicht funktioniert",
       "Lösung + Webinar-Pitch: was der Leser im Webinar bekommt (3-4 Bullets)",
       "Termin + klarer CTA-Button-Text",
-      "Signatur: Johannes Rasch, Geschäftsführer Scaling Champions"
+      "Signatur: Daniel Brandt, CEO Northpeak"
     ],
     "ctaText": "Platz sichern"
   }

@@ -118,13 +118,13 @@ function icsEscape(s: string): string {
 }
 
 export function planToIcs(plan: PostingPlan): string {
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scaling Champions//Webinar-Promo//DE", "CALSCALE:GREGORIAN"];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Northpeak//Webinar-Promo//DE", "CALSCALE:GREGORIAN"];
   plan.entries.forEach((e, i) => {
     const dt = icsDateFromGerman(e.date);
     if (!dt) return;
     lines.push(
       "BEGIN:VEVENT",
-      `UID:promo-${i}-${dt}@scaling-champions`,
+      `UID:promo-${i}-${dt}@northpeak`,
       `DTSTART;VALUE=DATE:${dt}`,
       `SUMMARY:${icsEscape(`${e.channel}: ${e.assetLabel}`)}`,
       `DESCRIPTION:${icsEscape(`${e.caption}\n\n(${e.rationale})`)}`,
@@ -156,8 +156,8 @@ export function webinarToCalendar(w: Webinar): { ics: string; google: string; ou
   const loc = w.registrationUrl || "Online";
 
   const ics = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Scaling Champions//Webinar-Promo//DE", "CALSCALE:GREGORIAN",
-    "BEGIN:VEVENT", `UID:webinar-${start}@scaling-champions`,
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Northpeak//Webinar-Promo//DE", "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT", `UID:webinar-${start}@northpeak`,
     `DTSTART:${start}`, `DTEND:${end}`,
     `SUMMARY:${icsEscape(title)}`, `DESCRIPTION:${icsEscape(desc)}`, `LOCATION:${icsEscape(loc)}`,
     "END:VEVENT", "END:VCALENDAR",

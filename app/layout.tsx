@@ -12,7 +12,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://webinar-promo-syst
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Webinar-Promo-System · Scaling Champions",
+    default: "Webinar-Promo-System · Northpeak",
     template: "%s · Webinar-Promo-System",
   },
   description: "Webinar rein → Angles, markenkonforme Anzeigen (3 Formate), E-Mail-Einladung, Qualitäts-Check & Posting-Plan raus. Ein wiederverwendbares System.",

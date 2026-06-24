@@ -37,7 +37,7 @@ export default function LoginPage() {
         <CardHeader className="space-y-3">
           <div className="flex items-center gap-2">
             <span className="h-5 w-5 rounded bg-primary" />
-            <span className="font-semibold text-sm">Scaling Champions</span>
+            <span className="font-semibold text-sm">Northpeak</span>
           </div>
           <CardTitle className="text-xl flex items-center gap-2">
             <Lock className="h-4 w-4" /> Webinar-Promo-System
