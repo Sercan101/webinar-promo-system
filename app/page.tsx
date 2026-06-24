@@ -100,6 +100,8 @@ export default function Home() {
   const [smtp, setSmtp] = useState<SmtpConfig>(EMPTY_SMTP);
   const [recipients, setRecipients] = useState("");
   const [sendingMail, setSendingMail] = useState<"test" | "list" | null>(null);
+  const [mailSubject, setMailSubject] = useState("");
+  const [mailImage, setMailImage] = useState<string | null>(null); // ausgewähltes Creative (dataUri) als Banner
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -114,6 +116,8 @@ export default function Home() {
   const cycleStartRef = useRef(0);
   const [qaOn, setQaOn] = useState(false); // Qualitäts-Schleife — im Einfach-Modus standardmäßig aus
   useEffect(() => { setQaOn(mode === "pro"); }, [mode]);
+  // Versand-Defaults, sobald ein Ergebnis da ist: Betreff aus der E-Mail, erstes Creative als Bild.
+  useEffect(() => { if (result) { setMailSubject(result.bundle.email.subject); setMailImage(result.creatives[0]?.dataUri ?? null); } }, [result]);
   // Live-Sekundenzähler während des Komplettlaufs (damit es nicht „tot" wirkt).
   useEffect(() => {
     if (cyclePhase === "" || cyclePhase === "done") return;
@@ -372,24 +376,25 @@ export default function Home() {
     } catch (e) { fail(e); } finally { setSending(null); }
   }
 
-  async function sendEmail(mode: "test" | "list") {
+  async function sendEmail(kind: "test" | "list") {
     if (!result) return;
     if (!smtp.host.trim() || !smtp.fromEmail.trim()) { toast.error("Bitte SMTP-Host und Absender-Adresse ausfüllen."); return; }
-    const to = mode === "test"
+    const to = kind === "test"
       ? [smtp.user.trim() || smtp.fromEmail.trim()]
       : recipients.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
     if (to.length === 0) { toast.error("Bitte Empfänger-Adressen eintragen."); return; }
     try { localStorage.setItem(SMTP_KEY, JSON.stringify(smtp)); } catch { /* quota */ }
-    setSendingMail(mode);
-    logStep(mode === "test" ? `Test-Mail wird an ${to[0]} gesendet …` : `E-Mail wird an ${to.length} Empfänger gesendet …`, "working");
+    setSendingMail(kind);
+    logStep(kind === "test" ? `Test-Mail wird an ${to[0]} gesendet …` : `E-Mail wird an ${to.length} Empfänger gesendet …`, "working");
     try {
       const email = result.bundle.email;
-      const html = emailToHtml(email, design.accent || "#E11D2A");
+      const subject = mailSubject.trim() || email.subject;
+      const html = emailToHtml(email, design.accent || "#E11D2A", mailImage ? "promo-banner" : undefined);
       const text = emailToMarkdown(email);
       const from = smtp.fromName.trim() ? `${smtp.fromName.trim()} <${smtp.fromEmail.trim()}>` : smtp.fromEmail.trim();
       const res = await fetch("/api/send-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
         smtp: { host: smtp.host, port: smtp.port, secure: smtp.secure, user: smtp.user, pass: smtp.pass },
-        from, to, subject: email.subject, html, text,
+        from, to, subject, html, text, image: mailImage ?? undefined,
       }) });
       const data = await jsonOrThrow(res);
       toast.success(`${data.sent}/${data.total} E-Mail(s) gesendet ✓`);
@@ -835,6 +840,52 @@ export default function Home() {
               </CardContent></Card>
             </section>
 
+            {/* Versand-Center — Bild & E-Mail auswählen, ausfüllen, rausschicken */}
+            <section>
+              <SectionTitle icon={<Send className="h-4 w-4" />}>Versenden — Einladung per SMTP rausschicken</SectionTitle>
+              <Card><CardContent className="pt-6 space-y-4">
+                <div>
+                  <p className="text-sm font-medium mb-2">1 · Bild wählen <span className="text-muted-foreground font-normal">— wird oben in die Mail eingebettet</span></p>
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setMailImage(null)} className={`h-16 w-16 rounded-md border flex items-center justify-center text-[10px] transition ${mailImage === null ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground"}`}>kein Bild</button>
+                    {result.creatives.map((c) => (
+                      <button key={c.filename} type="button" title={`${c.variant} · ${c.formatLabel}`} onClick={() => setMailImage(c.dataUri)} className={`rounded-md border overflow-hidden transition ${mailImage === c.dataUri ? "border-primary ring-2 ring-primary/40" : "border-border hover:border-muted-foreground/40"}`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={c.dataUri} alt="" className="h-16 w-16 object-cover block" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1.5">2 · Betreff</p>
+                  <Input value={mailSubject} onChange={(e) => setMailSubject(e.target.value)} placeholder="Betreff der E-Mail" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1.5">3 · Absender (SMTP) <span className="text-muted-foreground font-normal">— eigener Server, kein Drittanbieter; bleibt lokal im Browser</span></p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <Input value={smtp.host} onChange={(e) => setSmtp({ ...smtp, host: e.target.value })} placeholder="SMTP-Host (z.B. smtp.gmail.com)" />
+                    <div className="flex gap-2 items-center">
+                      <Input value={smtp.port} onChange={(e) => setSmtp({ ...smtp, port: e.target.value })} placeholder="Port" className="w-24" />
+                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap"><input type="checkbox" checked={smtp.secure} onChange={(e) => setSmtp({ ...smtp, secure: e.target.checked })} className="accent-primary" /> SSL (465)</label>
+                    </div>
+                    <Input value={smtp.user} onChange={(e) => setSmtp({ ...smtp, user: e.target.value })} placeholder="Benutzer / E-Mail (Login)" />
+                    <Input type="password" value={smtp.pass} onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })} placeholder="Passwort / App-Passwort" />
+                    <Input value={smtp.fromName} onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })} placeholder="Absender-Name (z.B. Johannes Rasch)" />
+                    <Input value={smtp.fromEmail} onChange={(e) => setSmtp({ ...smtp, fromEmail: e.target.value })} placeholder="Absender-Adresse" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-sm font-medium mb-1.5">4 · Empfänger</p>
+                  <Textarea value={recipients} onChange={(e) => setRecipients(e.target.value)} placeholder="Eine Adresse pro Zeile (oder Komma-getrennt)" className="min-h-20" />
+                </div>
+                <div className="flex gap-2 flex-wrap items-center">
+                  <Button variant="outline" onClick={() => sendEmail("test")} disabled={sendingMail !== null}>{sendingMail === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Test an mich</Button>
+                  <Button onClick={() => sendEmail("list")} disabled={sendingMail !== null}>{sendingMail === "list" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} An Empfänger senden</Button>
+                  <span className="text-[11px] text-muted-foreground">Max. 50 Empfänger · erst „Test an mich" empfohlen</span>
+                </div>
+              </CardContent></Card>
+            </section>
+
             <section>
               <SectionTitle icon={<Calendar className="h-4 w-4" />}>Webinar in den Kalender</SectionTitle>
               <Card><CardContent className="flex items-center gap-2 flex-wrap pt-6">
@@ -903,28 +954,6 @@ export default function Home() {
                       <Input value={slackUrl} onChange={(e) => setSlackUrl(e.target.value)} placeholder="https://hooks.slack.com/services/…" className="flex-1 min-w-60" />
                       <Button variant="outline" onClick={() => sendTo("slack")} disabled={sending === "slack"}>{sending === "slack" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Senden</Button>
                     </div>
-                  </div>
-                  <Separator />
-                  <div>
-                    <p className="text-sm font-medium mb-1 flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /> E-Mail per SMTP senden</p>
-                    <p className="text-xs text-muted-foreground mb-2">Eigener SMTP-Server (Gmail, Outlook, eigener Host …) — kein Drittanbieter. Zugangsdaten bleiben lokal im Browser und gehen nur zum Senden an den Server.</p>
-                    <div className="grid sm:grid-cols-2 gap-2">
-                      <Input value={smtp.host} onChange={(e) => setSmtp({ ...smtp, host: e.target.value })} placeholder="SMTP-Host (z.B. smtp.gmail.com)" />
-                      <div className="flex gap-2 items-center">
-                        <Input value={smtp.port} onChange={(e) => setSmtp({ ...smtp, port: e.target.value })} placeholder="Port" className="w-24" />
-                        <label className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap"><input type="checkbox" checked={smtp.secure} onChange={(e) => setSmtp({ ...smtp, secure: e.target.checked })} className="accent-primary" /> SSL (Port 465)</label>
-                      </div>
-                      <Input value={smtp.user} onChange={(e) => setSmtp({ ...smtp, user: e.target.value })} placeholder="Benutzer / E-Mail (Login)" />
-                      <Input type="password" value={smtp.pass} onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })} placeholder="Passwort / App-Passwort" />
-                      <Input value={smtp.fromName} onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })} placeholder="Absender-Name (z.B. Johannes Rasch)" />
-                      <Input value={smtp.fromEmail} onChange={(e) => setSmtp({ ...smtp, fromEmail: e.target.value })} placeholder="Absender-Adresse" />
-                    </div>
-                    <Textarea value={recipients} onChange={(e) => setRecipients(e.target.value)} placeholder="Empfänger — eine Adresse pro Zeile (oder Komma-getrennt)" className="mt-2 min-h-20" />
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      <Button variant="outline" onClick={() => sendEmail("test")} disabled={sendingMail !== null}>{sendingMail === "test" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Test an mich</Button>
-                      <Button onClick={() => sendEmail("list")} disabled={sendingMail !== null}>{sendingMail === "list" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />} An Empfänger senden</Button>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-1.5">Versendet die generierte Einladung (Betreff + HTML). Tipp: erst „Test an mich". Max. 50 Empfänger pro Versand.</p>
                   </div>
                 </CardContent></Card>
               )}

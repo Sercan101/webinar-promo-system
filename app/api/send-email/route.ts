@@ -12,7 +12,14 @@ const EMAIL_RE = /^\S+@\S+\.\S+$/;
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const { smtp, from, to, subject, html, text } = body ?? {};
+    const { smtp, from, to, subject, html, text, image } = body ?? {};
+
+    // Optionales Inline-Bild (ausgewähltes Creative) → als cid-Anhang.
+    let attachments: { filename: string; content: Buffer; cid: string; contentType: string }[] | undefined;
+    if (typeof image === "string") {
+      const m = image.match(/^data:([^;]+);base64,(.+)$/);
+      if (m) attachments = [{ filename: m[1].includes("png") ? "creative.png" : "creative.jpg", content: Buffer.from(m[2], "base64"), cid: "promo-banner", contentType: m[1] }];
+    }
 
     if (!smtp?.host || !smtp?.port) return NextResponse.json({ error: "SMTP-Host und -Port fehlen." }, { status: 400 });
     if (!from) return NextResponse.json({ error: "Absender-Adresse fehlt." }, { status: 400 });
@@ -41,7 +48,7 @@ export async function POST(req: Request) {
     const errors: string[] = [];
     for (const rcpt of recipients) {
       try {
-        await transporter.sendMail({ from, to: rcpt, subject, html, text });
+        await transporter.sendMail({ from, to: rcpt, subject, html, text, attachments });
         sent++;
       } catch (e) {
         errors.push(`${rcpt}: ${e instanceof Error ? e.message : String(e)}`);

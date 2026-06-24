@@ -195,9 +195,10 @@ export function planToMarkdown(plan: PostingPlan, webinar: Webinar): string {
   return lines.join("\n");
 }
 
-export function emailToHtml(email: EmailInvite, accent: string): string {
+export function emailToHtml(email: EmailInvite, accent: string, bannerCid?: string): string {
   const esc = (s: string) =>
     s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const banner = bannerCid ? `<tr><td><img src="cid:${bannerCid}" alt="" style="width:100%;display:block;border:0;"></td></tr>` : "";
   return `<!doctype html>
 <html lang="de"><head><meta charset="utf-8"><title>${esc(email.subject)}</title></head>
 <body style="margin:0;background:#f4f5f7;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1a1f29;">
@@ -205,6 +206,7 @@ export function emailToHtml(email: EmailInvite, accent: string): string {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px;">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border-radius:14px;overflow:hidden;">
       <tr><td style="background:${accent};height:6px;"></td></tr>
+      ${banner}
       <tr><td style="padding:36px 40px;">
         <p style="font-size:17px;line-height:1.6;margin:0 0 18px;">${esc(email.greeting)}</p>
         ${email.bodyParagraphs.map((p) => `<p style="font-size:17px;line-height:1.6;margin:0 0 18px;">${esc(p)}</p>`).join("\n        ")}
