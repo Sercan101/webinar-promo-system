@@ -44,6 +44,9 @@ const WEBHOOK_KEY = "promo-webhook-url";
 const SLACK_KEY = "promo-slack-url";
 const SMTP_KEY = "promo-smtp";
 const LOG_KEY = "promo-activity-log";
+const MODE_KEY = "promo-mode";
+
+type CyclePhase = "" | "brand" | "generate" | "plan" | "done";
 
 interface SmtpConfig { host: string; port: string; secure: boolean; user: string; pass: string; fromName: string; fromEmail: string }
 const EMPTY_SMTP: SmtpConfig = { host: "", port: "587", secure: false, user: "", pass: "", fromName: "", fromEmail: "" };
@@ -105,6 +108,8 @@ export default function Home() {
   const [selectedAngleIds, setSelectedAngleIds] = useState<string[]>([]);
   const [transcribing, setTranscribing] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [mode, setMode] = useState<"simple" | "pro">("simple");
+  const [cyclePhase, setCyclePhase] = useState<CyclePhase>("");
   const { setTheme } = useTheme();
   const [log, setLog] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
@@ -146,6 +151,7 @@ export default function Home() {
       setSlackUrl(localStorage.getItem(SLACK_KEY) ?? "");
       const sm = localStorage.getItem(SMTP_KEY); if (sm) setSmtp({ ...EMPTY_SMTP, ...JSON.parse(sm) });
       const lg = localStorage.getItem(LOG_KEY); if (lg) { const parsed = JSON.parse(lg) as LogEntry[]; setLog(parsed); logIdRef.current = parsed.reduce((m, e) => Math.max(m, e.id), 0); }
+      const md = localStorage.getItem(MODE_KEY); if (md === "pro" || md === "simple") setMode(md);
     } catch { /* ignore */ }
     hydratedRef.current = true; // ab jetzt darf gespeichert werden
   }, []);
@@ -212,12 +218,12 @@ export default function Home() {
     } catch (e) { fail(e); } finally { setLearning(false); }
   }
 
-  async function extractWebinar(mode: "transkript" | "url") {
+  async function extractWebinar(src: "transkript" | "url") {
     if (!importValue.trim()) return;
     setImporting(true);
-    logStep(mode === "url" ? "Webinar wird von der Landingpage-URL extrahiert …" : "Webinar wird aus dem Transkript extrahiert …", "working");
+    logStep(src === "url" ? "Webinar wird von der Landingpage-URL extrahiert …" : "Webinar wird aus dem Transkript extrahiert …", "working");
     try {
-      const payload = mode === "url" ? { url: importValue } : { text: importValue };
+      const payload = src === "url" ? { url: importValue } : { text: importValue };
       const res = await fetch("/api/extract-webinar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Extraktion fehlgeschlagen");
@@ -293,30 +299,46 @@ export default function Home() {
     } catch (e) { fail(e); } finally { setImporting(false); }
   }
 
-  async function generate() {
+  async function generate(): Promise<ApiResult | null> {
     setResult(null); setPlan(null); setLoading(true);
     logStep("Assets werden generiert: Angles → 3 Anzeigen × 3 Formate → E-Mail → Qualitäts-Check …", "working");
     try {
       const chosen = angleLab ? angleLab.filter((a) => selectedAngleIds.includes(a.id)) : undefined;
       const res = await fetch("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webinar, brand: brand ?? undefined, design, angles: chosen && chosen.length >= 2 ? chosen : undefined }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Unbekannter Fehler");
-      setResult(data as ApiResult); setCurrentWebinar(webinar); saveToHistory((data as ApiResult).bundle, webinar);
+      const data = await jsonOrThrow(res) as ApiResult;
+      setResult(data); setCurrentWebinar(webinar); saveToHistory(data.bundle, webinar);
       toast.success("Assets generiert ✓"); logStep("Assets generiert — Angles, Anzeigen, E-Mail & Qualitäts-Check fertig ✓", "done");
-    } catch (e) { fail(e); } finally { setLoading(false); }
+      return data;
+    } catch (e) { fail(e); return null; } finally { setLoading(false); }
   }
 
-  async function createPlan() {
-    if (!result || !currentWebinar) return;
+  async function createPlan(bundleArg?: PromoBundle, webinarArg?: Webinar) {
+    const bundle = bundleArg ?? result?.bundle;
+    const w = webinarArg ?? currentWebinar;
+    if (!bundle || !w) return;
     setPlanning(true);
     logStep("Posting-Plan wird geplant (rückwärts vom Webinar-Termin) …", "working");
     try {
-      const res = await fetch("/api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webinar: currentWebinar, bundle: result.bundle, brand: brand ?? undefined }) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Plan fehlgeschlagen");
+      const res = await fetch("/api/plan", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ webinar: w, bundle, brand: brand ?? undefined }) });
+      const data = await jsonOrThrow(res);
       setPlan(data.plan as PostingPlan); toast.success("Posting-Plan erstellt 🗓️");
       logStep("Posting-Plan fertig — als .ics/.csv exportierbar ✓", "done");
     } catch (e) { fail(e); } finally { setPlanning(false); }
+  }
+
+  // One-Klick-Komplettlauf: (Marke →) Assets → Posting-Plan, automatisch hintereinander.
+  async function runFullCycle() {
+    if (!requiredOk) { toast.error("Bitte zuerst die Webinar-Pflichtfelder ausfüllen."); setTab("formular"); return; }
+    logStep("⚡ Komplettes Set wird erstellt — automatischer Durchlauf startet …", "info");
+    if (exampleImages.length && !brand) { setCyclePhase("brand"); await learnBrand(); }
+    setCyclePhase("generate");
+    const res = await generate();
+    if (!res) { setCyclePhase(""); return; }
+    setCyclePhase("plan");
+    await createPlan(res.bundle, webinar);
+    setCyclePhase("done");
+    logStep("⚡ Komplettes Set fertig — Angles, Anzeigen, E-Mail, QA & Posting-Plan ✓", "done");
+    setTimeout(() => { setCyclePhase(""); window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); }, 1500);
   }
 
   function download(name: string, content: string | Blob, type: string) {
@@ -433,7 +455,7 @@ export default function Home() {
 
   // Tastenkürzel: ⌘/Ctrl+K = Befehlspalette, ⌘/Ctrl+↵ = Generieren. genRef hält die aktuelle Closure.
   const genRef = useRef<() => void>(() => {});
-  useEffect(() => { genRef.current = () => { if (requiredOk && !loading) generate(); }; });
+  useEffect(() => { genRef.current = () => { if (!requiredOk || loading || cyclePhase !== "") return; if (mode === "simple") runFullCycle(); else generate(); }; });
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey;
@@ -458,6 +480,14 @@ export default function Home() {
             <Badge variant="outline" className="text-muted-foreground">Scaling Champions</Badge>
           </div>
           <div className="flex items-center gap-1">
+            <div className="flex rounded-md border border-border p-0.5 mr-1">
+              {(["simple", "pro"] as const).map((m) => (
+                <button key={m} onClick={() => { setMode(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* */ } }}
+                  className={`text-xs px-2.5 py-1 rounded transition-colors ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                  {m === "simple" ? "Einfach" : "Pro"}
+                </button>
+              ))}
+            </div>
             <Button variant="ghost" size="sm" onClick={() => setPaletteOpen(true)} className="gap-1.5"><CommandIcon className="h-4 w-4" /><span className="hidden sm:inline">Befehle</span><kbd className="hidden sm:inline rounded border border-border px-1 text-[10px] text-muted-foreground">K</kbd></Button>
             <Button variant="ghost" size="sm" onClick={startTour}><HelpCircle className="h-4 w-4" /><span className="hidden sm:inline"> Tour</span></Button>
             <ThemeToggle />
@@ -490,7 +520,8 @@ export default function Home() {
           <span className="text-xs text-muted-foreground whitespace-nowrap">{statusLabel}</span>
         </div>
 
-        {/* Step 1 — Marke */}
+        {/* Step 1 — Marke (nur Pro; im Einfach-Modus automatisch gelernt, falls Beispiele hochgeladen) */}
+        {mode === "pro" && (
         <StepCard id="step-marke" n={1} icon={<Palette className="h-4 w-4" />} title="Marke" desc="Das Brand-Kit bestimmt Farben & Ton. Standard nutzen oder aus euren echten Beispiel-Anzeigen ableiten lassen." done={Boolean(brand)}>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <Badge variant={brand ? "default" : "secondary"}>{brand ? "Marke gelernt" : "Standard-Kit aktiv"}</Badge>
@@ -533,9 +564,10 @@ export default function Home() {
             </div>
           )}
         </StepCard>
+        )}
 
         {/* Step 2 — Webinar */}
-        <StepCard id="step-webinar" n={2} icon={<FileText className="h-4 w-4" />} title="Webinar" desc="Trag die Webinar-Daten ein. Am einfachsten über das Formular — oder lass sie aus einem Transkript / einer Landingpage automatisch ausfüllen." done={requiredOk}>
+        <StepCard id="step-webinar" n={mode === "simple" ? 1 : 2} icon={<FileText className="h-4 w-4" />} title="Webinar" desc="Trag die Webinar-Daten ein — oder lass sie aus PDF / Transkript / URL / Audio automatisch ausfüllen." done={requiredOk}>
           <div className="flex gap-2 mb-3">
             <Button variant="outline" size="sm" onClick={() => setWebinar(structuredClone(defaultWebinar) as unknown as Webinar)}><FilePlus2 className="h-3.5 w-3.5" /> Beispiel laden</Button>
             <Button variant="ghost" size="sm" onClick={() => setWebinar(EMPTY_WEBINAR)}><Eraser className="h-3.5 w-3.5" /> Leeren</Button>
@@ -585,7 +617,8 @@ export default function Home() {
           </Tabs>
         </StepCard>
 
-        {/* Step 3 — Design */}
+        {/* Step 3 — Design (nur Pro; im Einfach-Modus sinnvolle Defaults) */}
+        {mode === "pro" && (
         <StepCard id="step-design" n={3} icon={<Paintbrush className="h-4 w-4" />} title="Design" desc="Wähle Vorlage, Akzentfarbe und Schrift, lade optional Logo / Hintergrund hoch — die Vorschau rechts aktualisiert sich sofort.">
           <div className="grid md:grid-cols-2 gap-6 items-start">
             <DesignEditor design={design} onChange={setDesign} />
@@ -607,10 +640,12 @@ export default function Home() {
             </div>
           </div>
         </StepCard>
+        )}
 
-        {/* Step 4 — Generieren */}
-        <StepCard id="step-generieren" n={4} icon={<Sparkles className="h-4 w-4" />} title="Generieren" desc="Erzeugt Angles, 3 Anzeigen × 3 Formate, E-Mail und einen automatischen Qualitäts-Check." done={Boolean(result)}>
-          {/* Angle-Lab: optional Angles vorab bewerten & auswählen */}
+        {/* Step 4 — Erstellen */}
+        <StepCard id="step-generieren" n={mode === "simple" ? 2 : 4} icon={<Sparkles className="h-4 w-4" />} title={mode === "simple" ? "Erstellen" : "Generieren"} desc={mode === "simple" ? "Ein Klick → das komplette Set wird automatisch erstellt: Angles, Anzeigen, E-Mail, Qualitäts-Check und Posting-Plan." : "Erzeugt Angles, 3 Anzeigen × 3 Formate, E-Mail und einen automatischen Qualitäts-Check."} done={Boolean(result)}>
+          {/* Angle-Lab nur im Pro-Modus */}
+          {mode === "pro" && (
           <div className="mb-5 rounded-lg border border-border p-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm font-medium flex items-center gap-1.5"><Gauge className="h-4 w-4 text-primary" /> Angle-Lab <span className="text-muted-foreground font-normal">— optional: Angles vorab nach Ziehkraft bewerten & auswählen</span></p>
@@ -640,16 +675,26 @@ export default function Home() {
               </div>
             )}
           </div>
+          )}
           <div className="flex items-center gap-3 flex-wrap">
-            <Button onClick={generate} disabled={loading || !requiredOk} size="lg">
-              {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Generiere … (≈30 Sek.)</> : <>Assets generieren{angleLab ? ` (${selectedAngleIds.length} Angles)` : ""} <ChevronRight className="h-4 w-4" /></>}
+            {/* One-Klick-Komplettlauf — die primäre, automatische Aktion */}
+            <Button onClick={runFullCycle} disabled={cyclePhase !== "" || loading || planning || learning || !requiredOk} size="lg">
+              {cyclePhase !== "" && cyclePhase !== "done"
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt …</>
+                : <><Sparkles className="h-4 w-4" /> Komplettes Set erstellen <ChevronRight className="h-4 w-4" /></>}
             </Button>
-            {result && <Button variant="outline" onClick={downloadZip}><Download className="h-4 w-4" /> Zyklus als ZIP</Button>}
-            <span className="text-xs text-muted-foreground hidden sm:inline">Tipp: <kbd className="rounded border border-border px-1 py-0.5 text-[10px]">⌘</kbd><kbd className="rounded border border-border px-1 py-0.5 text-[10px]">↵</kbd> generiert · <kbd className="rounded border border-border px-1 py-0.5 text-[10px]">⌘</kbd><kbd className="rounded border border-border px-1 py-0.5 text-[10px]">K</kbd> Befehle</span>
+            {mode === "pro" && (
+              <Button variant="outline" onClick={generate} disabled={loading || cyclePhase !== "" || !requiredOk}>
+                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Generiere …</> : <>Nur Assets{angleLab ? ` (${selectedAngleIds.length} Angles)` : ""}</>}
+              </Button>
+            )}
+            {result && <Button variant="outline" onClick={downloadZip}><Download className="h-4 w-4" /> ZIP</Button>}
+            <span className="text-xs text-muted-foreground hidden sm:inline">Tipp: <kbd className="rounded border border-border px-1 py-0.5 text-[10px]">⌘</kbd><kbd className="rounded border border-border px-1 py-0.5 text-[10px]">↵</kbd> startet · <kbd className="rounded border border-border px-1 py-0.5 text-[10px]">⌘</kbd><kbd className="rounded border border-border px-1 py-0.5 text-[10px]">K</kbd> Befehle</span>
           </div>
           {!requiredOk && (
-            <p className="mt-2.5 text-xs text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" /> Fülle zuerst die Pflichtfelder in Schritt 2 aus: <span className="text-foreground">Titel, Datum, Uhrzeit, Host-Name, Kernproblem</span>.</p>
+            <p className="mt-2.5 text-xs text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" /> Fülle zuerst die Pflichtfelder im Webinar-Schritt aus: <span className="text-foreground">Titel, Datum, Uhrzeit, Host-Name, Kernproblem</span>.</p>
           )}
+          {cyclePhase !== "" && <AutoProgress phase={cyclePhase} withBrand={exampleImages.length > 0 && !brand} />}
         </StepCard>
 
         {/* Leerzustand: zeigt, wo der Output landet */}
@@ -794,7 +839,7 @@ export default function Home() {
               {!plan ? (
                 <Card><CardContent className="flex items-center justify-between gap-3 flex-wrap pt-6">
                   <span className="text-sm text-muted-foreground">KI plant die Sequenz über alle Kanäle (rückwärts vom Webinar-Termin) — inkl. kanal-spezifischer Captions.</span>
-                  <Button variant="outline" onClick={createPlan} disabled={planning}>{planning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />} Posting-Plan erstellen</Button>
+                  <Button variant="outline" onClick={() => createPlan()} disabled={planning}>{planning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Calendar className="h-4 w-4" />} Posting-Plan erstellen</Button>
                 </CardContent></Card>
               ) : (
                 <Card><CardContent className="pt-6">
@@ -802,7 +847,7 @@ export default function Home() {
                     <Button variant="outline" size="sm" onClick={() => download("posting-plan.ics", planToIcs(plan), "text/calendar")}><Download className="h-4 w-4" /> .ics</Button>
                     <Button variant="outline" size="sm" onClick={() => download("posting-plan.csv", planToCsv(plan), "text/csv")}><Download className="h-4 w-4" /> .csv</Button>
                     <Button variant="outline" size="sm" onClick={() => download("posting-plan.md", planToMarkdown(plan, currentWebinar!), "text/markdown")}><Download className="h-4 w-4" /> .md</Button>
-                    <Button variant="ghost" size="sm" onClick={createPlan} disabled={planning}><RotateCcw className="h-4 w-4" /> neu</Button>
+                    <Button variant="ghost" size="sm" onClick={() => createPlan()} disabled={planning}><RotateCcw className="h-4 w-4" /> neu</Button>
                   </div>
                   <div className="space-y-3">
                     {plan.entries.map((e, i) => (
@@ -912,8 +957,8 @@ export default function Home() {
           </div>
           <span className="text-xs text-muted-foreground truncate flex-1 sm:hidden">{statusLabel}</span>
           {result && <Button variant="outline" size="sm" onClick={downloadZip}><Download className="h-4 w-4" /><span className="hidden sm:inline">ZIP</span></Button>}
-          <Button size="sm" onClick={generate} disabled={loading || !requiredOk}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} Generieren
+          <Button size="sm" onClick={() => (mode === "simple" ? runFullCycle() : generate())} disabled={loading || planning || learning || cyclePhase !== "" || !requiredOk}>
+            {(loading || (cyclePhase !== "" && cyclePhase !== "done")) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {mode === "simple" ? "Komplett-Set" : "Generieren"}
           </Button>
         </div>
       </div>
@@ -927,7 +972,7 @@ export default function Home() {
             <CommandItem disabled={!requiredOk || loading} onSelect={() => runCmd(() => genRef.current())}><Sparkles /> Assets generieren <CommandShortcut>⌘↵</CommandShortcut></CommandItem>
             <CommandItem onSelect={() => runCmd(learnBrand)}><Palette /> Marke aus Beispielen lernen</CommandItem>
             <CommandItem onSelect={() => runCmd(analyzeAngles)}><Gauge /> Angle-Lab: Angles bewerten</CommandItem>
-            {result && <CommandItem onSelect={() => runCmd(createPlan)}><Calendar /> Posting-Plan erstellen</CommandItem>}
+            {result && <CommandItem onSelect={() => runCmd(() => createPlan())}><Calendar /> Posting-Plan erstellen</CommandItem>}
             {result && <CommandItem onSelect={() => runCmd(downloadZip)}><Download /> Zyklus als ZIP herunterladen</CommandItem>}
           </CommandGroup>
           <CommandSeparator />
@@ -954,6 +999,35 @@ function dataUriToBlob(uri: string): Blob {
   const bin = atob(b64); const arr = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
   return new Blob([arr], { type: mime });
+}
+
+function AutoProgress({ phase, withBrand }: { phase: CyclePhase; withBrand: boolean }) {
+  const order = ["brand", "generate", "plan", "done"];
+  const cur = order.indexOf(phase);
+  const steps = [
+    ...(withBrand ? [{ key: "brand", label: "Marke aus deinen Beispielen lernen" }] : []),
+    { key: "generate", label: "Angles · 3 Anzeigen × 3 Formate · E-Mail · Qualitäts-Check" },
+    { key: "plan", label: "Posting-Plan über alle Kanäle" },
+  ];
+  return (
+    <m.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+      <p className="text-sm font-semibold flex items-center gap-1.5 mb-3"><Sparkles className="h-4 w-4 text-primary" /> {phase === "done" ? "Komplettes Set fertig 🎉" : "Komplettes Set wird automatisch erstellt …"}</p>
+      <div className="space-y-2">
+        {steps.map((s) => {
+          const idx = order.indexOf(s.key);
+          const state = phase === "done" || idx < cur ? "done" : idx === cur ? "active" : "pending";
+          return (
+            <div key={s.key} className="flex items-center gap-2 text-sm">
+              {state === "done" ? <Check className="h-4 w-4 text-green-600 shrink-0" />
+                : state === "active" ? <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />
+                : <span className="h-4 w-4 flex items-center justify-center shrink-0"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" /></span>}
+              <span className={state === "pending" ? "text-muted-foreground" : ""}>{s.label}</span>
+            </div>
+          );
+        })}
+      </div>
+    </m.div>
+  );
 }
 
 function StepCard({ n, icon, title, desc, children, id, done }: { n: number; icon: React.ReactNode; title: string; desc: string; children: React.ReactNode; id?: string; done?: boolean }) {
