@@ -110,8 +110,16 @@ export default function Home() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [mode, setMode] = useState<"simple" | "pro">("simple");
   const [cyclePhase, setCyclePhase] = useState<CyclePhase>("");
+  const [cycleSecs, setCycleSecs] = useState(0);
+  const cycleStartRef = useRef(0);
   const [qaOn, setQaOn] = useState(false); // Qualitäts-Schleife — im Einfach-Modus standardmäßig aus
   useEffect(() => { setQaOn(mode === "pro"); }, [mode]);
+  // Live-Sekundenzähler während des Komplettlaufs (damit es nicht „tot" wirkt).
+  useEffect(() => {
+    if (cyclePhase === "" || cyclePhase === "done") return;
+    const id = setInterval(() => setCycleSecs(Math.floor((Date.now() - cycleStartRef.current) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, [cyclePhase]);
   const { setTheme } = useTheme();
   const [log, setLog] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
@@ -331,6 +339,7 @@ export default function Home() {
   // One-Klick-Komplettlauf: (Marke →) Assets → Posting-Plan, automatisch hintereinander.
   async function runFullCycle() {
     if (!requiredOk) { toast.error("Bitte zuerst die Webinar-Pflichtfelder ausfüllen."); setTab("formular"); return; }
+    cycleStartRef.current = Date.now(); setCycleSecs(0);
     logStep("⚡ Komplettes Set wird erstellt — automatischer Durchlauf startet …", "info");
     if (exampleImages.length && !brand) { setCyclePhase("brand"); await learnBrand(); }
     setCyclePhase("generate");
@@ -682,7 +691,7 @@ export default function Home() {
             {/* One-Klick-Komplettlauf — die primäre, automatische Aktion */}
             <Button onClick={runFullCycle} disabled={cyclePhase !== "" || loading || planning || learning || !requiredOk} size="lg">
               {cyclePhase !== "" && cyclePhase !== "done"
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt …</>
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Wird erstellt … {cycleSecs}s</>
                 : <><Sparkles className="h-4 w-4" /> Komplettes Set erstellen <ChevronRight className="h-4 w-4" /></>}
             </Button>
             {mode === "pro" && (
@@ -700,7 +709,7 @@ export default function Home() {
           {!requiredOk && (
             <p className="mt-2.5 text-xs text-muted-foreground flex items-center gap-1.5"><Info className="h-3.5 w-3.5" /> Fülle zuerst die Pflichtfelder im Webinar-Schritt aus: <span className="text-foreground">Titel, Datum, Uhrzeit, Host-Name, Kernproblem</span>.</p>
           )}
-          {cyclePhase !== "" && <AutoProgress phase={cyclePhase} withBrand={exampleImages.length > 0 && !brand} />}
+          {cyclePhase !== "" && <AutoProgress phase={cyclePhase} secs={cycleSecs} withBrand={exampleImages.length > 0 && !brand} />}
         </StepCard>
 
         {/* Leerzustand: zeigt, wo der Output landet */}
@@ -1007,17 +1016,18 @@ function dataUriToBlob(uri: string): Blob {
   return new Blob([arr], { type: mime });
 }
 
-function AutoProgress({ phase, withBrand }: { phase: CyclePhase; withBrand: boolean }) {
+function AutoProgress({ phase, secs, withBrand }: { phase: CyclePhase; secs: number; withBrand: boolean }) {
   const order = ["brand", "generate", "plan", "done"];
   const cur = order.indexOf(phase);
   const steps = [
     ...(withBrand ? [{ key: "brand", label: "Marke aus deinen Beispielen lernen" }] : []),
-    { key: "generate", label: "Angles · 3 Anzeigen × 3 Formate · E-Mail · Qualitäts-Check" },
+    { key: "generate", label: "Angles · 3 Anzeigen × 3 Formate · E-Mail" },
     { key: "plan", label: "Posting-Plan über alle Kanäle" },
   ];
   return (
     <m.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
-      <p className="text-sm font-semibold flex items-center gap-1.5 mb-3"><Sparkles className="h-4 w-4 text-primary" /> {phase === "done" ? "Komplettes Set fertig 🎉" : "Komplettes Set wird automatisch erstellt …"}</p>
+      <p className="text-sm font-semibold flex items-center gap-1.5 mb-1"><Sparkles className="h-4 w-4 text-primary" /> {phase === "done" ? "Komplettes Set fertig 🎉" : "Komplettes Set wird automatisch erstellt …"}</p>
+      {phase !== "done" && <p className="text-[11px] text-muted-foreground mb-3">läuft seit {secs}s · KI-Aufrufe dauern auf dem Free-Tier ~10–60s</p>}
       <div className="space-y-2">
         {steps.map((s) => {
           const idx = order.indexOf(s.key);
