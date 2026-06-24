@@ -102,6 +102,7 @@ export default function Home() {
   const [sendingMail, setSendingMail] = useState<"test" | "list" | null>(null);
   const [mailSubject, setMailSubject] = useState("");
   const [mailImage, setMailImage] = useState<string | null>(null); // ausgewähltes Creative (dataUri) als Banner
+  const [lightbox, setLightbox] = useState<string | null>(null); // Bild groß anzeigen
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState(false);
@@ -172,21 +173,34 @@ export default function Home() {
 
   async function startTour() {
     const { driver } = await import("driver.js"); // lazy: hält driver.js aus dem Initial-Bundle
+    type TourStep = { element?: string; popover: { title: string; description: string } };
+    const steps: TourStep[] = [
+      { popover: { title: "Willkommen 👋", description: "Kurze Tour durchs System — jederzeit mit ✕ abbrechbar." } },
+      { element: "#mode-toggle", popover: { title: "Einfach ⇄ Pro", description: "Einfach = 1 Klick zum kompletten Set. Pro = volle Kontrolle (Marke, Design, Angle-Lab). Du bist gerade im " + (mode === "simple" ? "Einfach" : "Pro") + "-Modus." } },
+      { element: "#step-webinar", popover: { title: "Webinar rein", description: "Eckdaten eintragen — oder per PDF / Transkript / URL / Audio automatisch ausfüllen (alles per Drag & Drop, wird vorab komprimiert)." } },
+    ];
+    if (mode === "pro") {
+      steps.push(
+        { element: "#step-marke", popover: { title: "Marke lernen (Pro)", description: "Eigene Beispiel-Anzeigen reinziehen → das System lernt Farben, Ton & Copy-Stil per Vision." } },
+        { element: "#step-design", popover: { title: "Design (Pro)", description: "Vorlage, Farben, Headline-Größe, Schrift-Helligkeit, Elemente ein-/ausblenden — mit Live-Vorschau." } },
+      );
+    }
+    steps.push(
+      { element: "#step-generieren", popover: { title: mode === "simple" ? "Komplettes Set erstellen" : "Generieren", description: "Ein Klick → Angles, Anzeigen (Bild + Text), E-Mail" + (mode === "simple" ? " und Posting-Plan entstehen automatisch hintereinander" : "") + " — der Fortschritt wird live angezeigt." } },
+      { popover: { title: "Danach: Versenden 📤", description: "Unter den Ergebnissen: Creative anklicken (Klick = große Vorschau), Betreff & Empfänger ausfüllen und die Einladung direkt per SMTP rausschicken." } },
+      { popover: { title: "Immer informiert 🧭", description: "Unten links siehst du jederzeit, was gerade läuft, den nächsten Schritt und einen Verlauf (inkl. Support-Log)." } },
+    );
+
     driver({
       showProgress: true, nextBtnText: "Weiter", prevBtnText: "Zurück", doneBtnText: "Fertig",
-      onDestroyed: () => { try { localStorage.setItem("promo-tour-seen-v1", "1"); } catch { /* */ } },
-      steps: [
-        { popover: { title: "Willkommen 👋", description: "Kurze Tour in 4 Schritten — du kannst jederzeit mit ✕ abbrechen." } },
-        { element: "#step-marke", popover: { title: "1 · Marke", description: "Standard-Brand-Kit nutzen oder aus euren echten Anzeigen ableiten lassen." } },
-        { element: "#step-webinar", popover: { title: "2 · Webinar", description: "Daten ins Formular eintragen — oder aus Transkript/URL automatisch ausfüllen lassen." } },
-        { element: "#step-design", popover: { title: "3 · Design", description: "Vorlage, Akzentfarbe, Schrift und eigene Bilder (Logo/Hintergrund) — alles optional." } },
-        { element: "#step-generieren", popover: { title: "4 · Generieren", description: "Ein Klick → Anzeigen, E-Mail, Qualitäts-Check und Posting-Plan erscheinen darunter." } },
-      ],
+      onDestroyed: () => { try { localStorage.setItem("promo-tour-seen-v2", "1"); } catch { /* */ } },
+      steps,
     }).drive();
   }
 
   useEffect(() => {
-    try { if (!localStorage.getItem("promo-tour-seen-v1")) setTimeout(startTour, 700); } catch { /* */ }
+    try { if (!localStorage.getItem("promo-tour-seen-v2")) setTimeout(startTour, 800); } catch { /* */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fail = (e: unknown) => { const m = e instanceof Error ? e.message : String(e); toast.error(m); logStep(m, "error"); };
@@ -496,7 +510,7 @@ export default function Home() {
             <Badge variant="outline" className="text-muted-foreground">Scaling Champions</Badge>
           </div>
           <div className="flex items-center gap-1">
-            <div className="flex rounded-md border border-border p-0.5 mr-1">
+            <div id="mode-toggle" className="flex rounded-md border border-border p-0.5 mr-1">
               {(["simple", "pro"] as const).map((m) => (
                 <button key={m} onClick={() => { setMode(m); try { localStorage.setItem(MODE_KEY, m); } catch { /* */ } }}
                   className={`text-xs px-2.5 py-1 rounded transition-colors ${mode === m ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
@@ -521,13 +535,19 @@ export default function Home() {
         <Card className="mt-5 bg-muted/30">
           <CardContent className="py-4">
             <p className="text-sm font-medium flex items-center gap-2"><Info className="h-4 w-4 text-primary" /> So funktioniert's</p>
-            <p className="text-sm text-muted-foreground mt-1.5">
-              In 4 Schritten von einem Webinar zu fertigen Promo-Assets:
-              <span className="text-foreground"> ① Marke</span> wählen →
-              <span className="text-foreground"> ② Webinar</span> eingeben (Formular, Transkript oder URL) →
-              <span className="text-foreground"> ③ Design</span> anpassen (Vorlage, Farben, eigene Bilder) →
-              <span className="text-foreground"> ④ Generieren</span>. Fertige Anzeigen, E-Mail und Posting-Plan erscheinen darunter.
-            </p>
+            {mode === "simple" ? (
+              <p className="text-sm text-muted-foreground mt-1.5">
+                <span className="text-foreground">① Webinar</span> eingeben (Formular, PDF, Transkript, URL oder Audio) →
+                <span className="text-foreground"> ② „Komplettes Set erstellen"</span> klicken. Angles, Anzeigen, E-Mail &amp; Posting-Plan entstehen <span className="text-foreground">automatisch</span> — danach kannst du die Einladung direkt <span className="text-foreground">per SMTP</span> rausschicken. Mehr Kontrolle? → <span className="text-foreground">Pro-Modus</span> (oben rechts).
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground mt-1.5">
+                <span className="text-foreground">① Marke</span> wählen →
+                <span className="text-foreground"> ② Webinar</span> eingeben →
+                <span className="text-foreground"> ③ Design</span> anpassen →
+                <span className="text-foreground"> ④ Generieren</span>. Fertige Anzeigen, E-Mail und Posting-Plan erscheinen darunter; unten kannst du sie versenden.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -816,7 +836,7 @@ export default function Home() {
               <m.div variants={gridParent} initial="hidden" whileInView="show" viewport={{ once: true, margin: "-40px" }} className="grid gap-5 md:grid-cols-3">
                 {result.bundle.ads.map((ad, i) => (
                   <m.div key={i} variants={gridChild}>
-                    <AdCard ad={ad} creatives={result.creatives.filter((c) => c.index === i)} critique={eff?.ads[i]} onDownload={downloadPng} onVariant={requestVariant} />
+                    <AdCard ad={ad} creatives={result.creatives.filter((c) => c.index === i)} critique={eff?.ads[i]} onDownload={downloadPng} onVariant={requestVariant} onZoom={setLightbox} />
                   </m.div>
                 ))}
               </m.div>
@@ -855,6 +875,13 @@ export default function Home() {
                       </button>
                     ))}
                   </div>
+                  {mailImage && (
+                    <button type="button" onClick={() => setLightbox(mailImage)} className="mt-3 block">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={mailImage} alt="Vorschau" className="max-h-72 rounded-lg border border-border cursor-zoom-in" />
+                      <span className="text-[11px] text-muted-foreground mt-1 block">🔍 Klick für große Vorschau</span>
+                    </button>
+                  )}
                 </div>
                 <div>
                   <p className="text-sm font-medium mb-1.5">2 · Betreff</p>
@@ -1007,6 +1034,19 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Bild groß (Lightbox) */}
+      <AnimatePresence>
+        {lightbox && (
+          <m.div key="lightbox" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setLightbox(null)}
+            className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 sm:p-10 cursor-zoom-out">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={lightbox} alt="Großansicht" className="max-h-full max-w-full rounded-lg shadow-2xl" />
+            <span className="absolute top-4 right-5 text-white/80 text-sm">✕ Schließen</span>
+          </m.div>
+        )}
+      </AnimatePresence>
+
       {/* Befehlspalette (⌘/Ctrl+K) */}
       <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen} title="Befehle" description="Schnellzugriff auf alle Aktionen">
         <CommandInput placeholder="Befehl suchen … (Generieren, Marke, Plan, Theme …)" />
@@ -1098,7 +1138,7 @@ function ScoreBadge({ score }: { score: number }) {
   const color = score >= 8 ? "#22C55E" : score >= 7 ? "#EAB308" : "#E11D2A";
   return <span className="text-xs font-bold rounded-full px-2.5 py-0.5 border" style={{ color, borderColor: color }}>{score}/10</span>;
 }
-function AdCard({ ad, creatives, critique, onDownload, onVariant }: { ad: AdCopy; creatives: Creative[]; critique?: AssetCritique; onDownload: (c: Creative) => void; onVariant: (ad: AdCopy) => Promise<{ ad: AdCopy; creatives: Creative[] } | null> }) {
+function AdCard({ ad, creatives, critique, onDownload, onVariant, onZoom }: { ad: AdCopy; creatives: Creative[]; critique?: AssetCritique; onDownload: (c: Creative) => void; onVariant: (ad: AdCopy) => Promise<{ ad: AdCopy; creatives: Creative[] } | null>; onZoom: (uri: string) => void }) {
   const [fmt, setFmt] = useState(creatives[0]?.formatKey ?? "");
   const [feedView, setFeedView] = useState(false);
   const [variant, setVariant] = useState<{ ad: AdCopy; creatives: Creative[] } | null>(null);
@@ -1139,7 +1179,7 @@ function AdCard({ ad, creatives, critique, onDownload, onVariant }: { ad: AdCopy
           {feedView
             ? <FeedMockup img={current.dataUri} caption={activeAd.hook} />
             /* eslint-disable-next-line @next/next/no-img-element */
-            : <img src={current.dataUri} alt={activeAd.headline} className="w-full rounded-lg border border-border block" />}
+            : <img src={current.dataUri} alt={activeAd.headline} onClick={() => onZoom(current.dataUri)} className="w-full rounded-lg border border-border block cursor-zoom-in" />}
         </m.div>
       </AnimatePresence>
       <div className="flex items-center justify-between gap-2 mt-3 mb-2">
