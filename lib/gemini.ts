@@ -62,7 +62,7 @@ async function callModel(model: string, opts: GeminiJsonOptions): Promise<string
       thinkingConfig: { thinkingBudget: 0 },
     },
   });
-  const MAX_ATTEMPTS = 4;
+  const MAX_ATTEMPTS = 5;
 
   let res!: Response;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -75,8 +75,8 @@ async function callModel(model: string, opts: GeminiJsonOptions): Promise<string
       throw new Error("Gemini API 429: Tageskontingent (Free-Tier) erschöpft. Neues Projekt/Key oder Billing nötig, oder bis zum Reset (00:00 PT) warten.");
     }
     if (RETRYABLE.has(res.status) && attempt < MAX_ATTEMPTS) {
-      // Pro-Minute-Limit/Überlast: Googles retryDelay abwarten (gedeckelt), sonst exponentiell.
-      let waitMs = 800 * 2 ** (attempt - 1); // 0.8s, 1.6s, 3.2s
+      // Überlast (503/500): geduldiger Backoff mit Jitter, um die Spitze zu überbrücken.
+      let waitMs = 1200 * 2 ** (attempt - 1) + Math.floor(Math.random() * 500); // ~1.2 / 2.4 / 4.8 / 9.6s
       if (res.status === 429) {
         const m = txt.match(/"retryDelay"\s*:\s*"(\d+(?:\.\d+)?)s"/);
         waitMs = m ? Math.min(Math.ceil(Number(m[1]) * 1000) + 600, 16000) : Math.min(5000 * attempt, 15000);
